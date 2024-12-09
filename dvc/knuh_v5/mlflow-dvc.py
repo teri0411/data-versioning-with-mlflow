@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Get URL from dvc
 import dvc.api
-path = "dvc/knuh_v5/data/module/model.pt"  # wine-quality.csv.dvc file presence is enough if dvc push to remote storage is done
+path = "data/module/WineQT.csv"  # wine-quality.csv.dvc file presence is enough if dvc push to remote storage is done
 repo = "https://www.simplatform.com/gitlab2/teri0411/data-versioning.git" # git init directory location
 version = "master" # git tag -a 'v1' -m 'removed 1000 lines' command is required
 

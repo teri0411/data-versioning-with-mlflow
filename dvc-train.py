@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 
 # 상수 정의
 DVC_CONFIG = {
-    "path": "dvc/knuh_v5/data/module/WineQT.csv",
+    "path": "dvc/test/data/module/WineQT.csv",
     "repo": "https://www.simplatform.com/gitlab2/teri0411/data-versioning.git",
     "rev": "master"
 }
 
 MLFLOW_CONFIG = {
     "model_name": "Default",
-    "model_save_path": "dvc/knuh_v5/data/module/test_model.pt"
+    "model_save_path": "dvc/test/data/module/test_model.pt"
 }
 
 class WineQualityModel(nn.Module):

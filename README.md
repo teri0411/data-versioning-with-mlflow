@@ -46,7 +46,7 @@ python dvc-infer.py
 만약 새로운 git repo를 만든다면 아래의 과정이 필요합니다.
 init 과정은 누군가 dvc를 설정해놓은 repo라면 불필요해보입니다.
 
-1. Init 과정  
+### 1. Init 과정  
 ```
 git init
 ```
@@ -59,9 +59,25 @@ dvc init
 dvc init 시 .dvc 폴더가 생성됩니다.
 .dvc 폴더에는 cache, tmp, config, .gitignore, config.local 등의 파일이 생성됩니다.
 
-2. dvc config 설정 (사전에 s3, minio 등 스토리지 생성 및 권한 설정 필요)
+이후, 아래 명령어들로 remote 스토리지 설정을 해주면 config 파일에 자동 업데이트 됩니다.
+
+```
+dvc remote add -d myremote s3://mybucket/myfolder
+dvc remote modify myremote profile myprofile
+```
+
+### 2. dvc config 설정 (사전에 s3, minio 등 스토리지 생성 및 권한 설정 필요)
 
 dvc config(.dvc/config)에서 다음과 같이 원격 스토리지 설정을 합니다.
+
+- .dvc/config.local 파일을 생성하여 다음처럼 설정해놓고 .gitignore에 추가한 후에 config에서는 profile이름만으로 관리하기도합니다.
+```
+['remote "test"']
+    configpath = ~/.aws/config
+    credentialpath = /home/terry/.aws/credentials
+```
+
+
 지금 각자 설정해놓은 .aws 폴더 내에 profile로 설정할 수도 있으며,
 configpath, credentialpath등을 임의로 정하여 설정할 수도 있습니다. 
 
@@ -83,7 +99,7 @@ or
     profile = corp-prod
 ```
 
-3. 데이터 변경 시
+### 3. 데이터 변경 시
 ```
 dvc add {file}
 git add {file}

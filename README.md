@@ -35,18 +35,13 @@ python dvc-train.py
 ```
 python dvc-infer.py
 ```
-------------------------------------------------------------------------------------------------------------------------
-----
-
-  
 
 # TL;DR
-
-    
 만약 새로운 git repo를 만든다면 아래의 과정이 필요합니다.
 init 과정은 누군가 dvc를 설정해놓은 repo라면 불필요해보입니다.
 
-### 1. Init 과정  
+## 1. Init 과정  
+### ref: https://dvc.org/doc/command-reference/init
 ```
 git init
 ```
@@ -59,6 +54,7 @@ dvc init
 dvc init 시 .dvc 폴더가 생성됩니다.
 .dvc 폴더에는 cache, tmp, config, .gitignore, config.local 등의 파일이 생성됩니다.
 
+
 이후, 아래 명령어들로 remote 스토리지 설정을 해주면 config 파일에 자동 업데이트 됩니다.
 
 ```
@@ -66,7 +62,7 @@ dvc remote add -d myremote s3://mybucket/myfolder
 dvc remote modify myremote profile myprofile
 ```
 
-### 2. dvc config 설정 (사전에 s3, minio 등 스토리지 생성 및 권한 설정 필요)
+## 2. dvc config 설정 (사전에 s3, minio 등 스토리지 생성 및 권한 설정 필요)
 
 dvc config(.dvc/config)에서 다음과 같이 원격 스토리지 설정을 합니다.
 
@@ -99,11 +95,11 @@ or
     profile = corp-prod
 ```
 
-### 3. 데이터 변경 시
+## 3. 데이터 변경 시
 ```
 dvc add {file}
-git add {file}
 dvc push
+git add {file}
 git commit -m "commit message"
 git push
 git push 후에는 모델 등록이 필요합니다. (현재 레포에서는 python dvc-train.py)

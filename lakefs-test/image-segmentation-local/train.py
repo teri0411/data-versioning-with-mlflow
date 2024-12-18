@@ -1,10 +1,10 @@
 from utils.dir_utils import ensure_directories
-from trainers import ModelTrainer
+from train import ModelTrain
 
 def main():
     """메인 함수"""
     ensure_directories()
-    trainer = ModelTrainer()
+    trainer = ModelTrain()
     trainer.train()
 
 if __name__ == "__main__":

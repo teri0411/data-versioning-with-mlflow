@@ -2,7 +2,7 @@ import mlflow
 from config import *
 from utils.git_utils import get_git_commit_hash
 
-class MLflowTrainer:
+class MLflowTrain:
     """MLflow 관련 기능을 처리하는 클래스"""
     
     def __init__(self):
@@ -14,7 +14,6 @@ class MLflowTrainer:
         return mlflow.start_run()
     
     def log_params(self):
-        """학습 파라미터를 기록합니다."""
         # Git commit hash 기록
         git_commit_hash = get_git_commit_hash()
         if git_commit_hash:

@@ -3,7 +3,7 @@ import torch
 from config import *
 from utils.lakefs_utils import setup_lakefs_client, upload_to_lakefs
 
-class LakeFSTrainer:
+class LakeFSTrain:
     """LakeFS 관련 기능을 처리하는 클래스"""
     
     def __init__(self):

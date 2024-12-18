@@ -47,17 +47,77 @@ def upload_to_lakefs(client, local_path, lakefs_path):
 def download_from_lakefs(client, lakefs_path, local_path):
     """LakeFS에서 파일을 다운로드합니다."""
     try:
+        # 디렉토리 경로가 있으면 생성
         if os.path.dirname(local_path):
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
         
-        response = client.objects.get_object(
-            repository=LAKEFS_REPO_NAME,
-            ref=LAKEFS_BRANCH,
-            path=lakefs_path
-        )
-        with open(local_path, 'wb') as f:
-            f.write(response.read())
-        return True
+        # LakeFS에서 파일 목록 가져오기
+        try:
+            objects = client.objects.list_objects(
+                repository=LAKEFS_REPO_NAME,
+                ref=LAKEFS_BRANCH,
+                prefix=lakefs_path
+            )
+            
+            # 파일이 없으면 실패
+            if not objects.results:
+                print(f"LakeFS에서 파일을 찾을 수 없음: {lakefs_path}")
+                return False
+                
+            # 단일 파일인 경우
+            if not os.path.isdir(local_path):
+                response = client.objects.get_object(
+                    repository=LAKEFS_REPO_NAME,
+                    ref=LAKEFS_BRANCH,
+                    path=lakefs_path
+                )
+                
+                # 임시 파일로 먼저 저장
+                temp_path = local_path + '.tmp'
+                with open(temp_path, 'wb') as f:
+                    f.write(response.read())
+                    
+                # 기존 파일이 있으면 삭제
+                if os.path.exists(local_path):
+                    try:
+                        os.remove(local_path)
+                    except OSError:
+                        os.chmod(local_path, 0o777)
+                        os.remove(local_path)
+                        
+                # 임시 파일을 실제 경로로 이동
+                os.replace(temp_path, local_path)
+                return True
+                
+            # 디렉토리인 경우
+            else:
+                success = True
+                for obj in objects.results:
+                    # 파일 경로 생성
+                    rel_path = obj.path.replace(lakefs_path, '').lstrip('/')
+                    dest_path = os.path.join(local_path, rel_path)
+                    
+                    # 디렉토리 생성
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    
+                    # 파일 다운로드
+                    response = client.objects.get_object(
+                        repository=LAKEFS_REPO_NAME,
+                        ref=LAKEFS_BRANCH,
+                        path=obj.path
+                    )
+                    
+                    with open(dest_path, 'wb') as f:
+                        f.write(response.read())
+                        
+                return success
+                
+        except Exception as e:
+            print(f"LakeFS API 호출 실패: {str(e)}")
+            return False
+            
     except Exception as e:
-        print(f"Error downloading {lakefs_path}: {str(e)}")
+        print(f"LakeFS에서 다운로드 실패 ({lakefs_path}): {str(e)}")
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.remove(temp_path)
         return False

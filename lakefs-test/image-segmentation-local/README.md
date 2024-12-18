@@ -50,18 +50,18 @@ docker compose --profile local-lakefs up -d
 ├── requirements.txt        # Python 패키지 의존성
 ├── train.py               # 모델 학습 스크립트
 ├── infer.py              # 모델 추론 스크립트
-├── trainers/             # 학습 관련 클래스들
+├── train/                # 학습 관련 클래스들
 │   ├── __init__.py
-│   ├── base_trainer.py    # 기본 학습 기능
-│   ├── lakefs_trainer.py  # LakeFS 관련 기능
-│   ├── mlflow_trainer.py  # MLflow 관련 기능
-│   └── model_trainer.py   # 전체 학습 과정 관리
-├── inferencers/          # 추론 관련 클래스들
+│   ├── base_train.py     # 기본 학습 기능
+│   ├── lakefs_train.py   # LakeFS 관련 기능
+│   ├── mlflow_train.py   # MLflow 관련 기능
+│   └── model_train.py    # 전체 학습 과정 관리
+├── inference/            # 추론 관련 클래스들
 │   ├── __init__.py
-│   ├── base_inferencer.py # 기본 추론 기능
-│   ├── lakefs_inferencer.py # LakeFS 관련 기능
-│   ├── mlflow_inferencer.py # MLflow 관련 기능
-│   └── model_inferencer.py  # 전체 추론 과정 관리
+│   ├── base_inference.py # 기본 추론 기능
+│   ├── lakefs_inference.py # LakeFS 관련 기능
+│   ├── mlflow_inference.py # MLflow 관련 기능
+│   └── model_inference.py  # 전체 추론 과정 관리
 └── utils/               # 유틸리티 함수들
     ├── __init__.py
     ├── dir_utils.py     # 디렉토리 관련 유틸리티
@@ -95,12 +95,12 @@ EPOCHS = 10
 IMAGE_SIZE = 256
 ```
 
-### Trainers 패키지
+### Train 패키지
 
-#### `base_trainer.py`
+#### `base_train.py`
 기본 모델 학습 기능을 담당하는 클래스입니다.
 ```python
-class BaseTrainer:
+class BaseTrain:
     """기본 모델 학습 클래스"""
     def __init__(self):
         # 모델, 옵티마이저, 손실 함수 초기화
@@ -110,10 +110,10 @@ class BaseTrainer:
         # 손실값 계산 및 반환
 ```
 
-#### `lakefs_trainer.py`
+#### `lakefs_train.py`
 LakeFS 관련 기능을 처리하는 클래스입니다.
 ```python
-class LakeFSTrainer:
+class LakeFSTrain:
     """LakeFS 관련 기능을 처리하는 클래스"""
     def save_model(self, model):
         # 모델 저장 및 LakeFS 업로드
@@ -122,10 +122,10 @@ class LakeFSTrainer:
         # 학습 데이터를 LakeFS에 업로드
 ```
 
-#### `mlflow_trainer.py`
+#### `mlflow_train.py`
 MLflow 관련 기능을 처리하는 클래스입니다.
 ```python
-class MLflowTrainer:
+class MLflowTrain:
     """MLflow 관련 기능을 처리하는 클래스"""
     def log_params(self):
         # 학습 파라미터 기록
@@ -137,10 +137,10 @@ class MLflowTrainer:
         # 모델 경로 기록
 ```
 
-#### `model_trainer.py`
+#### `model_train.py`
 전체 학습 과정을 관리하는 클래스입니다.
 ```python
-class ModelTrainer:
+class ModelTrain:
     """전체 학습 과정을 관리하는 클래스"""
     def train(self):
         # MLflow 실험 시작
@@ -149,22 +149,22 @@ class ModelTrainer:
         # 모델과 데이터 저장
 ```
 
-### Inferencers 패키지
+### Inference 패키지
 
-#### `base_inferencer.py`
+#### `base_inference.py`
 기본 모델 추론 기능을 담당하는 클래스입니다.
 ```python
-class BaseInferencer:
+class BaseInference:
     """기본 모델 추론 클래스"""
     def infer_image(self, image_path):
         # 이미지 로드 및 전처리
         # 추론 수행 및 결과 반환
 ```
 
-#### `lakefs_inferencer.py`
+#### `lakefs_inference.py`
 LakeFS에서 모델과 데이터를 다운로드하는 기능을 처리하는 클래스입니다.
 ```python
-class LakeFSInferencer:
+class LakeFSInference:
     """LakeFS 관련 기능을 처리하는 클래스"""
     def download_model(self, model_path):
         # LakeFS에서 모델 다운로드
@@ -173,20 +173,20 @@ class LakeFSInferencer:
         # LakeFS에서 데이터 다운로드
 ```
 
-#### `mlflow_inferencer.py`
+#### `mlflow_inference.py`
 MLflow에서 실험을 선택하고 관리하는 기능을 처리하는 클래스입니다.
 ```python
-class MLflowInferencer:
+class MLflowInference:
     """MLflow 관련 기능을 처리하는 클래스"""
     def select_experiment(self):
         # MLflow에서 실험 선택
         # 선택된 실험 정보 반환
 ```
 
-#### `model_inferencer.py`
+#### `model_inference.py`
 전체 추론 과정을 관리하는 클래스입니다.
 ```python
-class ModelInferencer:
+class ModelInference:
     """전체 추론 과정을 관리하는 클래스"""
     def infer(self):
         # MLflow에서 실험 선택

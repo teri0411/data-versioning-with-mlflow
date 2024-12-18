@@ -5,7 +5,7 @@ from config import *
 from model import create_model
 from dataset import get_data_loader
 
-class BaseTrainer:
+class BaseTrain:
     """기본 모델 학습 클래스"""
     
     def __init__(self):

@@ -20,6 +20,7 @@ MODEL_PATH = os.path.join(MODEL_DIR, MODEL_FILENAME)
 
 # 데이터 설정
 DATA_DIR = "data"
+DATA_PATH = os.path.join(os.path.dirname(__file__), DATA_DIR)
 IMAGES_DIR = os.path.join(DATA_DIR, "images")
 MASKS_DIR = os.path.join(DATA_DIR, "masks")
 

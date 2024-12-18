@@ -1,119 +1,164 @@
-# Data Versioning with DVC
+# 와인 품질 예측 프로젝트
 
-이 프로젝트는 DVC(Data Version Control)를 사용한 데이터 버전 관리 테스트 프로젝트입니다.
+이 프로젝트는 MLflow와 DVC를 결합하여 효율적인 ML 실험 및 데이터/모델 관리를 구현한 예제입니다:
+- MLflow: 실험 메타데이터(파라미터, 메트릭, 아티팩트 경로) 추적
+- DVC: 실제 데이터 파일과 모델 파일의 버전 관리
+
+## 데이터/모델 관리 전략
+
+1. **.gitignore 설정**
+   ```
+   data/          # 데이터 디렉토리
+   models/        # 모델 디렉토리
+   !data/*.dvc    # DVC 파일은 추적
+   !models/*.dvc  # DVC 파일은 추적
+   ```
+
+2. **DVC로 관리**
+   - `.dvc` 파일만 Git에 저장
+   - 실제 파일은 원격 저장소(예: S3)에 저장
+   - 학습 스크립트는 DVC에서 데이터만 가져오기
+   ```bash
+   dvc add data/wine-quality.csv
+   dvc add models/model.pt
+   ```
+
+3. **MLflow로 추적**
+   - 학습 실행마다 다음 정보를 MLflow에 기록:
+     - 데이터 경로: `data/wine-quality.csv`의 DVC 경로
+     - 모델 경로: `models/model.pt`의 DVC 경로
+     - 학습 파라미터
+     - 평가 메트릭
+     - Git 커밋 정보
+
+## 작업 흐름
+
+1. **데이터 및 모델 준비**
+   ```bash
+   # DVC에 데이터/모델 추가
+   dvc add data/wine-quality.csv
+   dvc add models/model.pt
+   dvc push
+   git add *.dvc
+   git commit -m "Add data and model"
+   ```
+
+2. **학습 단계**
+   ```bash
+   python train.py  # 1. DVC에서 데이터 확인
+                    # 2. 있으면 DVC에서 가져오기
+                    # 3. 없으면 UCI에서 다운로드
+                    # 4. 모델 학습
+                    # 5. MLflow에 메타데이터 등록
+   ```
+
+3. **추론 단계**
+   ```bash
+   python infer.py  # 1. MLflow에서 최신 실행 선택
+                    # 2. MLflow에서 데이터/모델의 DVC 경로 확인
+                    # 3. 해당 DVC 경로의 파일들 자동 다운로드
+                    # 4. 다운로드된 모델과 데이터로 예측 수행
+   ```
 
 ## 프로젝트 구조
+
 ```
 dvc-test/
-├── .dvc/           # DVC 설정 디렉토리
-├── aws/            # AWS 자격 증명 파일 (선택사항)
-├── dvc/            # 데이터 디렉토리
-├── setting.py      # AWS 설정 스크립트
-├── train.py        # 모델 학습 스크립트
-├── infer.py        # 모델 추론 스크립트
-└── requirements.txt # 의존성 파일
+├── .dvc/               # DVC 설정
+├── data/               # 데이터 디렉토리 (DVC로 관리)
+│   └── wine-quality.csv    # 와인 품질 데이터셋
+├── models/             # 모델 디렉토리 (DVC로 관리)
+├── train/             # 학습 모듈
+│   ├── base_train.py      # 기본 학습 클래스
+│   └── dvc_train.py       # DVC 관련 학습 구현
+├── inference/         # 추론 모듈
+│   ├── base_inference.py  # 기본 추론 클래스
+│   └── mlflow_inference.py # MLflow 관련 추론 구현
+├── config.py         # 설정 파일
+├── model.py          # 모델 정의
+├── train.py          # 학습 스크립트
+├── infer.py          # 추론 스크립트
+├── utils.py          # 유틸리티 함수
+└── requirements.txt  # 프로젝트 의존성
 ```
 
-## 설치 방법
+## 주요 파일
 
-```bash
-pip install -r requirements.txt
-```
+- `train.py`: 
+  - 데이터 로딩 및 모델 학습
+  - MLflow에 메타데이터 기록
+  - DVC를 통한 모델 저장
+- `infer.py`: 
+  - MLflow에서 실행 정보 조회
+  - DVC를 통한 데이터/모델 가져오기
+  - 예측 수행
 
-## AWS S3 설정 방법
+## 의존성
 
-### 1. AWS 자격 증명 설정
-```bash
-python setting.py
-```
-이 스크립트는 다음 작업을 수행합니다:
-- AWS Access Key ID와 Secret Access Key 입력 받기
-- `aws/config`와 `aws/credentials` 파일 생성
-- `.dvc/config` 파일 자동 생성 및 설정
+필요한 Python 패키지:
+- pandas
+- numpy
+- torch
+- scikit-learn
+- mlflow
+- dvc
 
-### 2. 생성되는 설정 파일
-- **aws/config**: AWS 리전 설정
-  ```ini
-  [default]
-  region = ap-northeast-2
-  ```
+## 사용법
 
-- **aws/credentials**: AWS 자격 증명
-  ```ini
-  [default]
-  aws_access_key_id = YOUR_ACCESS_KEY
-  aws_secret_access_key = YOUR_SECRET_KEY
-  ```
+1. **환경 설정**
+   ```bash
+   pip install -r requirements.txt
+   
+   # DVC 초기화 및 원격 저장소 설정
+   dvc init
+   dvc remote add -d storage s3://my-bucket/dvc-store
+   ```
 
-- **.dvc/config**: DVC 설정
-  ```ini
-  [core]
-      remote = test
-  ['remote "test"']
-      url = s3://dataversion-test/dvc
-      configpath = /path/to/aws/config
-      credentialpath = /path/to/aws/credentials
-  ```
+2. **학습**
+   ```bash
+   python train.py [alpha] [l1_ratio]
+   ```
+   - 선택적 파라미터:
+     - `alpha`: Elasticnet 혼합 파라미터 (기본값: 0.5)
+     - `l1_ratio`: L1 비율 파라미터 (기본값: 0.5)
 
-## 주요 스크립트 설명
+3. **추론**
+   ```bash
+   python infer.py
+   ```
+   - MLflow에서 최신 실행을 선택
+   - DVC를 통해 필요한 데이터/모델 다운로드
+   - 예측 수행
 
-### 1. setting.py
-- AWS S3 원격 스토리지 설정을 위한 스크립트
-- AWS 자격 증명 정보를 입력받아 `aws/` 디렉토리에 설정 파일 생성
-- DVC config 파일도 자동으로 생성하고 설정
-- **참고**: S3를 원격 스토리지로 사용할 때 반드시 실행 필요
+## 데이터 형식
 
-### 2. train.py
-- 와인 품질 예측 모델 학습 스크립트
-- 특징:
-  - DVC를 통해 S3 저장소에서 데이터를 가져옴 (`dvc.api.get_url` 사용)
-  - Git 저장소는 데이터의 메타데이터 추적에 사용
-  - 모델을 로컬 경로에 저장 (`dvc/test/data/module/test_model.pt`)
-  - MLflow를 통한 실험 관리
+와인 품질 데이터셋은 다음 형식을 사용합니다:
+- 구분자: 세미콜론 (;)
+- 특성: fixed acidity, volatile acidity, citric acid 등
+- 타겟: quality (0~10 사이의 점수)
 
-### 3. infer.py
-- 학습된 모델을 사용한 추론 스크립트
-- MLflow run ID를 입력받아 해당 모델로 추론 수행
+## 참고사항
 
-## DVC 기본 사용법
-
-### 1. 데이터 가져오기
-```bash
-dvc pull  # S3에서 데이터 다운로드
-```
-
-### 2. 데이터 변경 관리
-```bash
-dvc add {파일명}    # 데이터 추적 시작
-dvc push           # 원격 저장소에 데이터 업로드
-git add .          # DVC 파일 추적
-git commit -m "데이터 업데이트"
-```
-
-## 실행 방법
-
-1. AWS S3 설정 (필수)
-```bash
-python setting.py  # AWS 자격 증명 입력
-dvc pull          # S3에서 데이터 다운로드
-```
-
-2. 모델 학습
-```bash
-python train.py
-```
-
-3. 모델 추론
-```bash
-python infer.py
-```
+- Git: 코드와 설정 파일만 관리
+- DVC: 데이터와 모델 파일의 버전 관리
+- MLflow: 실험 메타데이터 추적 및 데이터/모델 경로 관리
+- 학습 지표로 RMSE, MAE, R2 점수 사용
 
 ## 문제 해결
 
-### dvc pull 실패 시
-1. AWS 자격 증명이 올바르게 설정되었는지 확인
+### DVC 관련 문제
+1. `dvc pull` 실패 시
+   - 원격 저장소 설정 확인
    ```bash
-   python setting.py  # AWS 자격 증명 재설정
+   dvc remote list
+   dvc remote verify
    ```
-2. .dvc/config 파일에서 다음 설정 확인
-   - configpath와 credentialpath가 절대 경로인지 확인
+   - 인증 정보 확인
+
+2. 데이터/모델 불일치
+   - MLflow 실행 정보 확인
+   - DVC 캐시 초기화 후 다시 시도
+   ```bash
+   dvc gc -w
+   dvc pull
+   ```

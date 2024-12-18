@@ -1,15 +1,16 @@
 import os
 import getpass
 
-# 경로 설정
-config_path = "./aws/config"
-credentials_path = "./aws/credentials"
+# 경로 설정 - 절대 경로 사용
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(BASE_DIR, "aws", "config")
+credentials_path = os.path.join(BASE_DIR, "aws", "credentials")
 
 os.makedirs(os.path.dirname(config_path), exist_ok=True)
 os.makedirs(os.path.dirname(credentials_path), exist_ok=True)
 
 # config 파일 내용
-config_content = """[corp-prod]
+config_content = """[default]
 region = ap-northeast-2
 """
 
@@ -19,7 +20,7 @@ aws_access_key = input("AWS Access Key ID: ").strip()
 aws_secret_key = getpass.getpass("AWS Secret Access Key: ").strip()
 
 # credentials 파일 내용
-credentials_content = f"""[corp-prod]
+credentials_content = f"""[default]
 aws_access_key_id={aws_access_key}
 aws_secret_access_key={aws_secret_key}
 """
@@ -37,62 +38,20 @@ with open(credentials_path, "w") as credentials_file:
 print(f"Credentials 파일이 생성되었습니다: {credentials_path}")
 
 # DVC config 파일을 직접 텍스트로 처리
-dvc_config_path = "./.dvc/config"
+dvc_config_path = os.path.join(BASE_DIR, ".dvc", "config")
 
-# 설정할 경로들
-config_path = "./aws/config"
-credentials_path = "./aws/credentials"
+# DVC config 파일 내용
+dvc_config_content = f"""[core]
+    remote = test
+['remote "test"']
+    url = s3://dataversion-test/dvc
+    configpath = {config_path}
+    credentialpath = {credentials_path}
+    profile = default
+"""
 
-# 파일 내용 읽기
-with open(dvc_config_path, 'r') as file:
-    lines = file.readlines()
+# DVC config 파일 생성
+with open(dvc_config_path, "w") as dvc_config_file:
+    dvc_config_file.write(dvc_config_content)
 
-# 새로운 설정을 추가할 위치 찾기
-new_lines = []
-in_test_section = False
-config_added = False
-credential_added = False
-
-for line in lines:
-    # test 섹션 시작 확인
-    if "['remote \"test\"']" in line:
-        in_test_section = True
-        new_lines.append(line)
-        continue
-    
-    # 다음 섹션이 시작되면 test 섹션 종료
-    if in_test_section and line.strip().startswith('['):
-        if not config_added:
-            new_lines.append(f"    configpath = {config_path}\n")
-        if not credential_added:
-            new_lines.append(f"    credentialpath = {credentials_path}\n")
-        in_test_section = False
-    
-    # test 섹션 내에서 처리
-    if in_test_section:
-        # profile 라인은 건너뛰기
-        if 'profile =' in line:
-            continue
-        # configpath 처리
-        if 'configpath =' in line:
-            new_lines.append(f"    configpath = {config_path}\n")
-            config_added = True
-            continue
-        # credentialpath 처리
-        if 'credentialpath =' in line:
-            new_lines.append(f"    credentialpath = {credentials_path}\n")
-            credential_added = True
-            continue
-    
-    new_lines.append(line)
-
-# 파일 끝까지 갔는데 아직 test 섹션이면
-if in_test_section:
-    if not config_added:
-        new_lines.append(f"    configpath = {config_path}\n")
-    if not credential_added:
-        new_lines.append(f"    credentialpath = {credentials_path}\n")
-
-# 파일에 저장
-with open(dvc_config_path, 'w') as file:
-    file.writelines(new_lines)
+print(f"DVC config 파일이 생성되었습니다: {dvc_config_path}")

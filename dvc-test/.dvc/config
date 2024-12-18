@@ -2,5 +2,6 @@
     remote = test
 ['remote "test"']
     url = s3://dataversion-test/dvc
-    configpath = ./aws/config
-    credentialpath = ./aws/credentials
+    configpath = /home/terry/sim/workspace/data-tools/data-versioning/dvc-test/aws/config
+    credentialpath = /home/terry/sim/workspace/data-tools/data-versioning/dvc-test/aws/credentials
+    profile = default

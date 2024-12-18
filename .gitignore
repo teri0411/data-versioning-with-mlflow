@@ -1,1 +1,8 @@
-dvc/test/data
+dvc-test/dvc/test/data
+dvc-test/test_model.pt
+dvc-test/aws
+lakefs-test/image-segmentation-local/models
+lakefs-test/image-segmentation-local/mlruns
+lakefs-test/image-segmentation-local/data
+lakefs-test/image-segmentation-local/results
+lakefs-test/image-segmentation-local/__pycache__

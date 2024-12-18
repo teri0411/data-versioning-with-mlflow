@@ -4,6 +4,7 @@ import mlflow
 import requests
 import subprocess
 from train.dvc_train import DVCTrain
+from train.mlflow_train import MLflowTrain
 from config import DATA_PATH, MODEL_PATH, MLFLOW_TRACKING_URI, EXPERIMENT_NAME
 from utils import get_git_commit_info, get_dvc_paths
 
@@ -62,10 +63,13 @@ def main():
     print("Data loaded from:", DATA_PATH)
     print("Columns:", data.columns.tolist())
     
-    # Train model
-    trainer = DVCTrain()
-    metrics = trainer.train(data)
-    trainer.save_model()
+    # Initialize trainers
+    dvc_trainer = DVCTrain()
+    mlflow_trainer = MLflowTrain()
+    
+    # Train model and get metrics
+    metrics = dvc_trainer.train(data)
+    dvc_trainer.save_model()
     print(f"Training completed. Metrics: {metrics}")
     
     # Get DVC paths and Git info

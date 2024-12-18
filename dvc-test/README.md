@@ -4,207 +4,154 @@
 - MLflow: 실험 메타데이터(파라미터, 메트릭, 아티팩트 경로) 추적
 - DVC: 실제 데이터 파일과 모델 파일의 버전 관리
 
-## 데이터/모델 관리 전략
+## 시스템 구성
 
-1. **.gitignore 설정**
-   ```
-   data/          # 데이터 디렉토리
-   models/        # 모델 디렉토리
-   !data/*.dvc    # DVC 파일은 추적
-   !models/*.dvc  # DVC 파일은 추적
-   ```
+- **Git**: 소스 코드 버전 관리
+- **DVC**: 데이터와 모델 파일 버전 관리
+- **MLflow**: 실험 메타데이터 추적 및 모델 레지스트리
 
-2. **DVC로 관리**
-   - `.dvc` 파일만 Git에 저장
-   - 실제 파일은 원격 저장소(예: S3)에 저장
-   - 학습 스크립트는 DVC에서 데이터만 가져오기
-   ```bash
-   dvc add data/wine-quality.csv
-   dvc add models/model.pt
-   ```
+## 워크플로우 다이어그램
 
-3. **MLflow로 추적**
-   - 학습 실행마다 다음 정보를 MLflow에 기록:
-     - 데이터 경로: `data/wine-quality.csv`의 DVC 경로
-     - 모델 경로: `models/model.pt`의 DVC 경로
-     - 학습 파라미터
-     - 평가 메트릭
-     - Git 커밋 정보
+```mermaid
+graph TD
+    subgraph Training
+        A[데이터 준비] --> B[DVC pull data]
+        B --> C[모델 학습]
+        C --> D[모델 저장]
+        D --> E[DVC add model]
+        C --> F[MLflow에 메타데이터 기록]
+    end
 
-## 작업 흐름
+    subgraph Model Registration
+        E --> G[DVC 모델 확인]
+        F --> H[MLflow 실험 결과 확인]
+        G --> I[모델 메타데이터 등록]
+        H --> I
+    end
 
-1. **데이터 및 모델 준비**
-   ```bash
-   # DVC에 데이터/모델 추가
-   dvc add data/wine-quality.csv
-   dvc add models/model.pt
-   dvc push
-   git add *.dvc
-   git commit -m "Add data and model"
-   ```
+    subgraph Inference
+        I --> J[MLflow에서 실험 선택]
+        J --> K[DVC 모델 경로 확인]
+        K --> L[DVC pull model]
+        L --> M[추론 수행]
+    end
 
-2. **학습 단계**
-   ```bash
-   python train.py  # 1. DVC에서 데이터 확인
-                    # 2. 있으면 DVC에서 가져오기
-                    # 3. 없으면 UCI에서 다운로드
-                    # 4. 모델 학습
-                    # 5. MLflow에 메타데이터 등록
-   ```
+    classDef storage fill:#f9f,stroke:#333,stroke-width:2px
+    classDef process fill:#bbf,stroke:#333,stroke-width:2px
+    class B,E,G,L storage
+    class C,F,I,M process
+```
 
-3. **추론 단계**
-   ```bash
-   python infer.py  # 1. MLflow에서 최신 실행 선택
-                    # 2. MLflow에서 데이터/모델의 DVC 경로 확인
-                    # 3. 해당 DVC 경로의 파일들 자동 다운로드
-                    # 4. 다운로드된 모델과 데이터로 예측 수행
-   ```
+## 설치 방법
+
+1. 필요한 패키지 설치:
+```bash
+pip install -r requirements.txt
+```
+
+2. DVC 설정:
+```bash
+dvc init
+dvc remote add -d myremote s3://mybucket/dvcstore
+```
+
+3. MLflow 설정:
+- MLflow 서버 실행:
+```bash
+mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns
+```
+- `config.py`에서 MLflow 접속 정보 설정
+
+## 시스템 아키텍처
+
+### 1. 데이터 및 모델 관리
+- **DVC**: 실제 데이터와 모델 파일을 저장하고 버전 관리
+  - 학습 데이터: `data/wine-quality.csv`
+  - 모델 파일: `models/model.pt`
+
+- **MLflow**: 실험 메타데이터 추적
+  - 하이퍼파라미터
+  - 학습 메트릭 (MAE, RMSE 등)
+  - DVC 모델 경로
+  - Git commit hash
+
+### 2. 워크플로우
+
+1. **모델 학습 (train.py)**
+   - DVC로 데이터 가져오기
+   - 모델 학습 수행
+   - MLflow에 메타데이터 기록:
+     - 하이퍼파라미터
+     - 학습 메트릭
+     - DVC 모델 경로
+   - 모델 파일을 DVC에 저장
+
+2. **모델 등록 (register_model.py)**
+   - DVC에서 모델 존재 확인
+   - MLflow에서 실험 결과 확인
+   - 성능이 기준을 만족하면 모델 메타데이터 등록
+   - 실제 모델은 DVC에 유지
+
+3. **모델 추론 (infer.py)**
+   - MLflow에서 실험 선택 (메타데이터)
+   - MLflow에서 DVC 모델 경로 확인
+   - DVC에서 실제 모델 다운로드
+   - 추론 수행
+
+## 사용 방법
+
+### 1. 모델 학습
+```bash
+python train.py
+```
+- DVC에서 데이터를 가져옵니다
+- 모델이 학습되고 DVC에 저장됩니다
+- MLflow에 실험 메타데이터가 기록됩니다
+
+### 2. 모델 등록
+```bash
+python register_model.py
+```
+- DVC에 저장된 모델을 확인합니다
+- MLflow에 모델 메타데이터를 등록합니다
+- `--manual` 옵션으로 수동 등록 가능
+
+### 3. 모델 추론
+```bash
+python infer.py
+```
+- MLflow에서 등록된 모델 메타데이터를 선택합니다
+- DVC에서 실제 모델을 다운로드합니다
+- `--interactive` 옵션으로 수동 모델 선택 가능
 
 ## 프로젝트 구조
-
 ```
 dvc-test/
-├── .dvc/               # DVC 설정
-├── data/               # 데이터 디렉토리 (DVC로 관리)
-│   └── wine-quality.csv    # 와인 품질 데이터셋
-├── models/             # 모델 디렉토리 (DVC로 관리)
-├── train/             # 학습 모듈
-│   ├── base_train.py      # 기본 학습 클래스
-│   └── dvc_train.py       # DVC 관련 학습 구현
-├── inference/         # 추론 모듈
-│   ├── base_inference.py  # 기본 추론 클래스
-│   └── mlflow_inference.py # MLflow 관련 추론 구현
-├── config.py         # 설정 파일
-├── model.py          # 모델 정의
-├── train.py          # 학습 스크립트
-├── infer.py          # 추론 스크립트
-├── utils.py          # 유틸리티 함수
-├── setting.py        # 프로젝트 설정 및 환경 변수
-└── requirements.txt  # 프로젝트 의존성
+├── train/              # 학습 관련 모듈
+│   ├── base_train.py   # 기본 학습 로직
+│   ├── dvc_train.py    # DVC 관련 기능
+│   └── mlflow_train.py # MLflow 관련 기능
+├── inference/          # 추론 관련 모듈
+│   ├── base_inference.py # 기본 추론 로직
+│   ├── dvc_inference.py  # DVC 관련 기능
+│   └── mlflow_inference.py # MLflow 관련 기능
+├── data/              # 데이터 디렉토리
+├── models/            # 모델 디렉토리
+├── train.py           # 학습 스크립트
+├── register_model.py  # 모델 등록 스크립트
+└── infer.py           # 추론 스크립트
 ```
 
-## 주요 파일
+## 데이터셋 정보
 
-- `train.py`: 
-  - 데이터 로딩 및 모델 학습
-  - MLflow에 메타데이터 기록
-  - DVC를 통한 모델 저장
-- `infer.py`: 
-  - MLflow에서 실행 정보 조회
-  - DVC를 통한 데이터/모델 가져오기
-  - 예측 수행
-- `setting.py`:
-  - AWS 자격 증명과 DVC 설정을 자동화하는 파일입니다.
-
-  1. **AWS 설정 자동화**
-     ```python
-     # AWS 설정 파일 생성
-     config_path = "aws/config"        # AWS 리전 설정
-     credentials_path = "aws/credentials"  # AWS 자격 증명
-     ```
-     - AWS Access Key와 Secret Key를 CLI에서 입력받아 자격 증명 파일 생성
-     - AWS 리전은 'ap-northeast-2'로 자동 설정
-
-  2. **DVC 설정 자동화**
-     ```python
-     # DVC 설정 파일 생성
-     dvc_config_path = ".dvc/config"
-     ```
-     - DVC 원격 저장소: `s3://dataversion-test/dvc`
-     - AWS 설정 파일 연동:
-       - configpath: AWS 리전 설정 파일 경로
-       - credentialpath: AWS 자격 증명 파일 경로
-       - profile: default
-
-  3. **실행 방법**
-     ```bash
-     python setting.py  # AWS 자격 증명 입력 후 설정 파일 자동 생성
-     ```
-
-## 의존성
-
-필요한 Python 패키지:
-- pandas
-- numpy
-- torch
-- scikit-learn
-- mlflow
-- dvc
-
-## 사용법
-
-1. **환경 설정**
-   ```bash
-   pip install -r requirements.txt
-   
-   # DVC 초기화 및 원격 저장소 설정
-   dvc init
-   dvc remote add -d storage s3://my-bucket/dvc-store
-   ```
-
-2. **학습**
-   ```bash
-   python train.py [alpha] [l1_ratio]
-   ```
-   - 선택적 파라미터:
-     - `alpha`: Elasticnet 혼합 파라미터 (기본값: 0.5)
-     - `l1_ratio`: L1 비율 파라미터 (기본값: 0.5)
-
-3. **추론**
-   ```bash
-   python infer.py
-   ```
-   - MLflow에서 최신 실행을 선택
-   - DVC를 통해 필요한 데이터/모델 다운로드
-   - 예측 수행
-
-## 데이터 형식
-
-와인 품질 데이터셋은 다음 형식을 사용합니다:
+UCI Wine Quality 데이터셋을 사용합니다:
+- 출처: https://archive.ics.uci.edu/ml/datasets/wine+quality
 - 구분자: 세미콜론 (;)
 - 특성: fixed acidity, volatile acidity, citric acid 등
 - 타겟: quality (0~10 사이의 점수)
 
-## 참고사항
+## 주의사항
 
-- Git: 코드와 설정 파일만 관리
-- DVC: 데이터와 모델 파일의 버전 관리
-- MLflow: 실험 메타데이터 추적 및 데이터/모델 경로 관리
-- 학습 지표로 RMSE, MAE, R2 점수 사용
-
-## 문제 해결
-
-### DVC 관련 문제
-1. `dvc pull` 실패 시
-   - 원격 저장소 설정 확인
-   ```bash
-   dvc remote list
-   dvc remote verify
-   ```
-   - 인증 정보 확인
-
-2. 데이터/모델 불일치
-   - MLflow 실행 정보 확인
-   - DVC 캐시 초기화 후 다시 시도
-   ```bash
-   dvc gc -w
-   dvc pull
-   ```
-
-```python
-DVC_REMOTE = "s3://my-bucket"  # DVC 원격 저장소 URL
-DVC_DATA_PATH = "data/wine-quality.csv"  # 데이터 파일 경로
-DVC_MODEL_PATH = "models/model.pt"       # 모델 파일 경로
-
-MLFLOW_TRACKING_URI = "http://localhost:5000"  # MLflow 서버 주소
-EXPERIMENT_NAME = "wine-quality"               # MLflow 실험 이름
-
-DATA_URL = "https://archive.ics.uci.edu/ml/wine-quality.csv"  # UCI 데이터셋 URL
-FEATURES = ["fixed acidity", "volatile acidity", ...]  # 학습에 사용할 특성
-TARGET = "quality"                                     # 예측 대상 변수
-
-TRAIN_SIZE = 0.8       # 학습/테스트 데이터 분할 비율
-RANDOM_SEED = 42       # 랜덤 시드
-LEARNING_RATE = 0.001  # 학습률
-BATCH_SIZE = 32        # 배치 크기
-EPOCHS = 100          # 학습 에포크
+- Git은 소스 코드 관리, DVC는 데이터/모델 관리, MLflow는 메타데이터 추적용으로 사용됩니다
+- DVC remote와 MLflow 서버가 올바르게 설정되어 있어야 합니다
+- 환경 변수가 올바르게 설정되어 있어야 합니다

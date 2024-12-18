@@ -16,10 +16,10 @@ class ModelInference:
         self.mlflow_inference = MLflowInference()
         self.lakefs_inference = LakeFSInference()
     
-    def infer(self):
+    def infer(self, auto_select=True):
         """추론을 수행합니다."""
         # MLflow에서 실험 선택
-        run = self.mlflow_inference.select_experiment()
+        run = self.mlflow_inference.select_experiment(auto_select)
         if run is None:
             print("실험 선택이 취소되었습니다.")
             return

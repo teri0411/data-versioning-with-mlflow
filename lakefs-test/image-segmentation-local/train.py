@@ -18,35 +18,32 @@ LAKEFS_ACCESS_KEY = "AKIAIOSFOLKFSSAMPLES"
 LAKEFS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 REPO_NAME = "image-segmentation-local-repo"
 
-# MLflow 설정
-mlflow.set_tracking_uri("http://localhost:5000")
-experiment_name = "Image Segmentation"
-mlflow.set_experiment(experiment_name)
-
-# LakeFS 리포지토리 생성
+# LakeFS 클라이언트 설정
 configuration = lakefs_client.Configuration()
 configuration.host = LAKEFS_ENDPOINT
 configuration.username = LAKEFS_ACCESS_KEY
 configuration.password = LAKEFS_SECRET_KEY
 client = LakeFSClient(configuration)
 
+# 저장소가 없으면 생성
 try:
-    # 리포지토리가 이미 존재하는지 확인
-    try:
-        client.repositories.get_repository(REPO_NAME)
-        print(f"Repository {REPO_NAME} already exists")
-    except lakefs_client.exceptions.ApiException as e:
-        if e.status == 404:  # 리포지토리가 없는 경우에만 생성
-            client.repositories.create_repository(models.RepositoryCreation(
-                name=REPO_NAME,
-                storage_namespace=f"s3://image-segmentation-local-repo",
-                default_branch="main"
-            ))
-            print(f"Created repository: {REPO_NAME}")
-        else:
-            raise e
-except lakefs_client.exceptions.ApiException as e:
-    raise e
+    client.repositories.get_repository(REPO_NAME)
+except lakefs_client.exceptions.NotFoundException:
+    client.repositories.create_repository(
+        models.RepositoryCreation(
+            name=REPO_NAME,
+            storage_namespace=f"s3://image-segmentation-local-repo",
+            default_branch="main",
+        )
+    )
+    print(f"Repository '{REPO_NAME}' created successfully!")
+else:
+    print(f"Repository '{REPO_NAME}' already exists.")
+
+# MLflow 설정
+mlflow.set_tracking_uri("http://localhost:5000")
+experiment_name = "Image Segmentation"
+mlflow.set_experiment(experiment_name)
 
 # SimpleCNN 모델 정의
 class SimpleCNN(nn.Module):
@@ -148,16 +145,30 @@ def train_model():
     # 모델, 손실함수, 옵티마이저 설정
     model = SimpleCNN()
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # MLflow 실험 시작
     with mlflow.start_run() as run:
+        # Git commit hash 가져오기
         if git_commit_hash:
             mlflow.set_tag("git_commit_hash", git_commit_hash)
         
+        # 실험 파라미터 기록
+        mlflow.log_params({
+            "model_type": "SimpleCNN",
+            "optimizer": "Adam",
+            "loss_function": "BCELoss",
+            "num_samples": num_samples,
+            "batch_size": 16,
+            "num_epochs": 10,
+            "learning_rate": optimizer.param_groups[0]['lr']
+        })
+        
         print("\n학습 시작...")
         # 학습 루프
+        best_loss = float('inf')
         for epoch in range(10):
+            model.train()
             total_loss = 0
             for images, masks in dataloader:
                 optimizer.zero_grad()
@@ -169,7 +180,20 @@ def train_model():
             
             avg_loss = total_loss / len(dataloader)
             print(f"Epoch {epoch+1}, Loss: {avg_loss:.4f}")
-            mlflow.log_metric("loss", avg_loss, step=epoch)
+            
+            # MLflow에 메트릭 기록
+            mlflow.log_metrics({
+                "Loss": avg_loss,
+                "Learning Rate": optimizer.param_groups[0]['lr']
+            }, step=epoch)
+            
+            # 최고 성능 모델 저장
+            if avg_loss < best_loss:
+                best_loss = avg_loss
+                mlflow.log_metric("Best Loss", best_loss)  
+
+        # 최종 메트릭 기록
+        mlflow.log_metric("Final Loss", avg_loss)
 
         # 모델 저장
         model_path = "models/simple_cnn_model.pt"
@@ -221,7 +245,6 @@ def train_model():
                         )
 
         # MLflow에 메타데이터 기록
-        mlflow.log_param("model_type", "SimpleCNN")
         mlflow.log_artifact(model_path)
         mlflow.log_param("lakefs_data_path", f"lakefs://{REPO_NAME}/main/data")
 

@@ -8,8 +8,7 @@ services:
     ports:
       - "8003:8000"
     environment:
-      - LAKEFS_DATABASE_TYPE=local
-      - LAKEFS_DATABASE_LOCAL_PATH=/lakefs/metadata
+      - LAKEFS_DATABASE_TYPE=mem
       - LAKEFS_BLOCKSTORE_TYPE=s3
       - LAKEFS_BLOCKSTORE_S3_FORCE_PATH_STYLE=true
       - LAKEFS_BLOCKSTORE_S3_ENDPOINT=http://minio:9000
@@ -22,8 +21,6 @@ services:
       - LAKEFS_INSTALLATION_ACCESS_KEY_ID=AKIAIOSFOLKFSSAMPLES
       - LAKEFS_INSTALLATION_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       - LAKECTL_SERVER_ENDPOINT_URL=http://localhost:8000
-    volumes:
-      - lakefs_metadata:/lakefs/metadata
     depends_on:
       minio-setup:
         condition: service_completed_successfully
@@ -88,5 +85,3 @@ networks:
 
 volumes:
   minio_data:
-  lakefs_metadata:
-    driver: local

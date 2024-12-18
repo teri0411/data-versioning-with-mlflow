@@ -8,6 +8,7 @@ from train import SimpleCNN
 import torchvision
 import torchvision.transforms as transforms
 from PIL import Image
+import argparse
 
 # LakeFS 설정
 LAKEFS_ENDPOINT = "http://localhost:8003"
@@ -21,7 +22,8 @@ experiment_name = "Image Segmentation"
 
 def download_file_from_lakefs(client, repository, branch, path, local_path):
     # 디렉토리가 없으면 생성
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+    if os.path.dirname(local_path):  # 디렉토리 경로가 있는 경우에만 생성
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
     
     # 파일 다운로드
     try:
@@ -37,13 +39,29 @@ def download_file_from_lakefs(client, repository, branch, path, local_path):
         print(f"Error downloading {path}: {str(e)}")
         return False
 
-def load_model_and_infer():
-    print("MLflow에서 최신 실험 가져오기...")
-    # MLflow에서 최신 실험 가져오기
-    experiment = mlflow.get_experiment_by_name(experiment_name)
-    runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id])
-    latest_run = runs.iloc[0]  # 가장 최근 실행 선택
-
+def load_model_and_infer(run_id=None):
+    print("MLflow에서 실험 정보 가져오기...")
+    if run_id:
+        # 특정 run_id의 실험 가져오기
+        run = mlflow.get_run(run_id)
+        print(f"- Run ID: {run_id}")
+    else:
+        # run_id가 없으면 최신 실험 가져오기
+        print("- Run ID가 지정되지 않아 최신 실험을 가져옵니다")
+        experiment = mlflow.get_experiment_by_name(experiment_name)
+        runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id])
+        if len(runs) == 0:
+            print("MLflow에서 실험을 찾을 수 없습니다.")
+            return
+        run = mlflow.get_run(runs.iloc[0].run_id)
+        
+    # LakeFS 경로 가져오기
+    model_path = run.data.params.get("model_path", "models/simple_cnn_model.pt")
+    data_path = run.data.params.get("lakefs_data_path", "data")
+    
+    if not model_path:
+        raise ValueError("MLflow 실험에 모델 경로 정보가 없습니다")
+        
     # LakeFS 클라이언트 설정
     configuration = lakefs_client.Configuration()
     configuration.host = LAKEFS_ENDPOINT
@@ -51,12 +69,27 @@ def load_model_and_infer():
     configuration.password = LAKEFS_SECRET_KEY
     client = LakeFSClient(configuration)
 
+    # 저장소가 없으면 생성
+    try:
+        client.repositories.get_repository(REPO_NAME)
+    except lakefs_client.exceptions.NotFoundException:
+        client.repositories.create_repository(
+            models.RepositoryCreation(
+                name=REPO_NAME,
+                storage_namespace=f"s3://image-segmentation-local-repo",
+                default_branch="main",
+            )
+        )
+        print(f"Repository '{REPO_NAME}' created successfully!")
+    else:
+        print(f"Repository '{REPO_NAME}' already exists.")
+
     print("\nLakeFS에서 파일 다운로드 중...")
     # 모델 파일 다운로드
-    model_path = "models/simple_cnn_model.pt"
-    local_model_path = model_path
-    print(f"- 모델 파일: {model_path}")
-    download_file_from_lakefs(client, REPO_NAME, "main", model_path, local_model_path)
+    local_model_path = "models/simple_cnn_model.pt"
+    print(f"- 모델 파일: {local_model_path}")
+    os.makedirs(os.path.dirname(local_model_path), exist_ok=True)
+    download_file_from_lakefs(client, REPO_NAME, "main", local_model_path, local_model_path)
 
     # 데이터 디렉토리 다운로드
     data_dir = "data"
@@ -66,7 +99,7 @@ def load_model_and_infer():
     print("- 학습 데이터:")
     try:
         # 이미지와 마스크 파일 다운로드
-        for prefix in ["data/images/", "data/masks/"]:
+        for prefix in [f"{data_dir}/images/", f"{data_dir}/masks/"]:
             objects = client.objects.list_objects(
                 repository=REPO_NAME,
                 ref="main",
@@ -90,7 +123,7 @@ def load_model_and_infer():
     # 테스트용 이미지 로드
     images_dir = os.path.join(data_dir, "images")
     masks_dir = os.path.join(data_dir, "masks")
-    test_images = sorted(os.listdir(images_dir))[:5]  # 처음 5개 이미지만 테스트
+    test_images = sorted(os.listdir(images_dir))[:1]  # 1개 이미지만 테스트
 
     # 모델 로드
     print("\n추론 시작...")
@@ -149,4 +182,62 @@ def load_model_and_infer():
             print("-" * 80)
 
 if __name__ == "__main__":
-    load_model_and_infer()
+    # MLflow에서 실험 목록 가져오기
+    experiment = mlflow.get_experiment_by_name(experiment_name)
+    runs = mlflow.search_runs(experiment_ids=[experiment.experiment_id])
+    
+    if len(runs) > 0:
+        print("\n사용 가능한 최근 실험:")
+        for idx, run_id in enumerate(runs['run_id'], 1):
+            run = mlflow.get_run(run_id)
+            metrics = run.data.metrics
+            tags = run.data.tags
+            
+            # Git commit hash 가져오기 (mlflow.source.git.commit 태그에서 가져오기)
+            git_commit = tags.get('mlflow.source.git.commit', 'N/A')
+            if git_commit != 'N/A':
+                git_commit = git_commit[:7]  # 앞 7자리만 표시
+            
+            # Loss 값 가져오기 (대소문자 구분 없이)
+            loss = metrics.get('Loss', metrics.get('loss', 'N/A'))
+            if isinstance(loss, float):
+                loss = f"{loss:.4f}"
+            
+            # Best Loss 찾기 (대소문자 구분 없이)
+            best_loss = metrics.get('Best Loss', metrics.get('best_loss', loss))  # Best Loss가 없으면 Loss 값 사용
+            if isinstance(best_loss, float):
+                best_loss = f"{best_loss:.4f}"
+            
+            # Final Loss 찾기 (대소문자 구분 없이)
+            final_loss = metrics.get('Final Loss', metrics.get('final_loss', loss))  # Final Loss가 없으면 Loss 값 사용
+            if isinstance(final_loss, float):
+                final_loss = f"{final_loss:.4f}"
+            
+            print(f"{idx}. Run ID: {run_id}")
+            print(f"   - Git Commit: {git_commit}")
+            print(f"   - Loss: {loss}")
+            print(f"   - Best Loss: {best_loss}")
+            print(f"   - Final Loss: {final_loss}")
+            print(f"   - 생성 시간: {run.info.start_time}")
+            print()
+        
+        # 사용자에게 실험 번호 입력 받기
+        while True:
+            try:
+                choice = input("\n실험 번호를 선택하세요 (Enter를 누르면 최신 실험 사용): ").strip()
+                if choice == "":
+                    selected_run_id = runs.iloc[0].run_id
+                    break
+                choice = int(choice)
+                if 1 <= choice <= len(runs):
+                    selected_run_id = runs.iloc[choice-1].run_id
+                    break
+                print(f"1부터 {len(runs)} 사이의 숫자를 입력하세요.")
+            except ValueError:
+                print("유효한 숫자를 입력하세요.")
+    else:
+        print("사용 가능한 실험이 없습니다.")
+        exit(1)
+
+    # 선택된 실험으로 추론 실행
+    load_model_and_infer(selected_run_id)

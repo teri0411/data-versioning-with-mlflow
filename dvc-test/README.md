@@ -79,6 +79,7 @@ dvc-test/
 ├── train.py          # 학습 스크립트
 ├── infer.py          # 추론 스크립트
 ├── utils.py          # 유틸리티 함수
+├── setting.py        # 프로젝트 설정 및 환경 변수
 └── requirements.txt  # 프로젝트 의존성
 ```
 
@@ -92,6 +93,33 @@ dvc-test/
   - MLflow에서 실행 정보 조회
   - DVC를 통한 데이터/모델 가져오기
   - 예측 수행
+- `setting.py`:
+  - AWS 자격 증명과 DVC 설정을 자동화하는 파일입니다.
+
+  1. **AWS 설정 자동화**
+     ```python
+     # AWS 설정 파일 생성
+     config_path = "aws/config"        # AWS 리전 설정
+     credentials_path = "aws/credentials"  # AWS 자격 증명
+     ```
+     - AWS Access Key와 Secret Key를 CLI에서 입력받아 자격 증명 파일 생성
+     - AWS 리전은 'ap-northeast-2'로 자동 설정
+
+  2. **DVC 설정 자동화**
+     ```python
+     # DVC 설정 파일 생성
+     dvc_config_path = ".dvc/config"
+     ```
+     - DVC 원격 저장소: `s3://dataversion-test/dvc`
+     - AWS 설정 파일 연동:
+       - configpath: AWS 리전 설정 파일 경로
+       - credentialpath: AWS 자격 증명 파일 경로
+       - profile: default
+
+  3. **실행 방법**
+     ```bash
+     python setting.py  # AWS 자격 증명 입력 후 설정 파일 자동 생성
+     ```
 
 ## 의존성
 
@@ -162,3 +190,21 @@ dvc-test/
    dvc gc -w
    dvc pull
    ```
+
+```python
+DVC_REMOTE = "s3://my-bucket"  # DVC 원격 저장소 URL
+DVC_DATA_PATH = "data/wine-quality.csv"  # 데이터 파일 경로
+DVC_MODEL_PATH = "models/model.pt"       # 모델 파일 경로
+
+MLFLOW_TRACKING_URI = "http://localhost:5000"  # MLflow 서버 주소
+EXPERIMENT_NAME = "wine-quality"               # MLflow 실험 이름
+
+DATA_URL = "https://archive.ics.uci.edu/ml/wine-quality.csv"  # UCI 데이터셋 URL
+FEATURES = ["fixed acidity", "volatile acidity", ...]  # 학습에 사용할 특성
+TARGET = "quality"                                     # 예측 대상 변수
+
+TRAIN_SIZE = 0.8       # 학습/테스트 데이터 분할 비율
+RANDOM_SEED = 42       # 랜덤 시드
+LEARNING_RATE = 0.001  # 학습률
+BATCH_SIZE = 32        # 배치 크기
+EPOCHS = 100          # 학습 에포크

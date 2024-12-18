@@ -1,16 +1,8 @@
 import os
-import subprocess
 import lakefs_client
 from lakefs_client import models
 from lakefs_client.client import LakeFSClient
 from config import *
-
-def get_git_commit_hash():
-    """현재 Git commit hash를 반환합니다."""
-    try:
-        return subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
-    except:
-        return None
 
 def setup_lakefs_client():
     """LakeFS 클라이언트를 설정하고 반환합니다."""
@@ -69,9 +61,3 @@ def download_from_lakefs(client, lakefs_path, local_path):
     except Exception as e:
         print(f"Error downloading {lakefs_path}: {str(e)}")
         return False
-
-def ensure_directories():
-    """필요한 디렉토리들이 존재하는지 확인하고 생성합니다."""
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    os.makedirs(IMAGES_DIR, exist_ok=True)
-    os.makedirs(MASKS_DIR, exist_ok=True)

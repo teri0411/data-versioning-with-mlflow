@@ -14,6 +14,7 @@ class MLflowTrain:
         return mlflow.start_run()
     
     def log_params(self):
+        """학습 파라미터와 Git 정보를 기록합니다."""
         # Git commit hash 기록
         git_commit_hash = get_git_commit_hash()
         if git_commit_hash:
@@ -25,17 +26,26 @@ class MLflowTrain:
             "batch_size": BATCH_SIZE,
             "epochs": EPOCHS
         })
+        
+        # LakeFS 모델 경로 기록
+        model_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/models/model.pth"
+        mlflow.log_param("model_path", model_path)
     
     def log_metrics(self, metrics):
         """메트릭을 기록합니다."""
         for name, value in metrics.items():
             mlflow.log_metric(name, value)
     
-    def log_model_path(self, model_path):
-        """모델 경로를 기록합니다."""
-        mlflow.log_param("model_path", model_path)
+    def end_run(self):
+        """MLflow 실험을 종료합니다."""
+        mlflow.end_run()
     
-    def log_data_path(self):
-        """데이터 경로를 기록합니다."""
-        data_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/{LAKEFS_DATA_PATH}"
-        mlflow.log_param("data_path", data_path)
+    def register_model(self, run_id, metrics):
+        """모델을 MLflow Model Registry에 등록합니다."""
+        if metrics.get("accuracy", 0) > 0.9:  # 성능이 기준을 만족하면
+            model_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/models/model.pth"
+            mlflow.register_model(
+                model_uri=model_path,
+                name="image_segmentation_model",
+                tags={"source_run": run_id}
+            )

@@ -1,31 +1,34 @@
+import os
+import torch
 from .base_train import BaseTrain
-from .mlflow_train import MLflowTrain
-from .lakefs_train import LakeFSTrain
-from config import EPOCHS
+from config import EPOCHS, MODEL_DIR, MODEL_PATH
 
 class ModelTrain:
-    """전체 학습 과정을 관리하는 클래스"""
+    """모델 학습을 관리하는 클래스"""
     
     def __init__(self):
         """초기화"""
         self.base_train = BaseTrain()
-        self.mlflow_train = MLflowTrain()
-        self.lakefs_train = LakeFSTrain()
+    
+    def save_model(self, model):
+        """모델을 파일로 저장합니다."""
+        os.makedirs(MODEL_DIR, exist_ok=True)
+        torch.save(model.state_dict(), MODEL_PATH)
+        print(f"Model saved to {MODEL_PATH}")
     
     def train(self):
-        """학습을 수행합니다."""
-        # MLflow 실험 시작
-        with self.mlflow_train.start_run():
-            # 학습 파라미터 기록
-            self.mlflow_train.log_params()
-            
-            # 모델 학습
-            for epoch in range(EPOCHS):
-                loss = self.base_train.train_epoch(epoch)
-                self.mlflow_train.log_metrics({"loss": loss})
-            
-            # 모델 저장
-            self.lakefs_train.save_model(self.base_train.model)
-            
-            # 데이터 업로드
-            self.lakefs_train.upload_data()
+        """
+        학습을 수행하고 학습된 모델을 반환합니다.
+        
+        Returns:
+            학습된 모델
+        """
+        # 모델 학습
+        for epoch in range(EPOCHS):
+            loss = self.base_train.train_epoch(epoch)
+            print(f"Epoch {epoch+1}/{EPOCHS}, Loss: {loss:.4f}")
+        
+        # 모델 저장
+        self.save_model(self.base_train.model)
+        
+        return self.base_train.model

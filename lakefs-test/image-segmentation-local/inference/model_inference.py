@@ -18,22 +18,26 @@ class ModelInference:
     
     def infer(self, auto_select=True):
         """추론을 수행합니다."""
-        # MLflow에서 실험 선택
+        # MLflow에서 실험 선택 (메타데이터)
         run = self.mlflow_inference.select_experiment(auto_select)
         if run is None:
             print("실험 선택이 취소되었습니다.")
             return
-            
-        # 모델과 데이터 다운로드
-        model_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/models/model.pth"
-        model_path = self.lakefs_inference.download_model(model_path)
+        
+        # MLflow에서 LakeFS 모델 경로 가져오기
+        model_path = run.data.params.get("model_path")
+        if not model_path:
+            raise Exception("Model path not found in MLflow metadata")
+        
+        # LakeFS에서 모델과 데이터 다운로드
+        local_model_path = self.lakefs_inference.download_model(model_path)
         self.lakefs_inference.download_data(run.info.run_id)
         
-        # 모델 로드
-        self.base_inference.load_model(model_path)
+        # 모델 로드 및 추론
+        model = self.base_inference.load_model(local_model_path)
+        predictions = self.base_inference.predict(model)
         
-        # 추론 수행
-        results = self.base_inference.infer_images()
-        
-        # 결과 저장
-        self.base_inference.save_results(results)
+        print(f"\n추론이 완료되었습니다.")
+        print(f"Run ID: {run.info.run_id}")
+        print(f"Model: {model_path}")
+        return predictions

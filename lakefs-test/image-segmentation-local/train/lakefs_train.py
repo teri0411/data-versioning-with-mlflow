@@ -1,5 +1,6 @@
 import os
 import torch
+import subprocess
 from config import *
 from utils.lakefs_utils import setup_lakefs_client, upload_to_lakefs
 
@@ -9,6 +10,15 @@ class LakeFSTrain:
     def __init__(self):
         self.lakefs_client = setup_lakefs_client()
     
+    def check_model_exists(self, model_path):
+        """LakeFS에 모델이 존재하는지 확인"""
+        try:
+            result = subprocess.run(['lakectl', 'fs', 'stat', model_path], 
+                                  capture_output=True, text=True)
+            return result.returncode == 0
+        except Exception:
+            return False
+    
     def save_model(self, model):
         """모델을 저장하고 LakeFS에 업로드합니다."""
         print("\nLakeFS에 모델 저장 중...")
@@ -16,6 +26,8 @@ class LakeFSTrain:
         
         # LakeFS에 모델 업로드
         lakefs_model_path = os.path.join(LAKEFS_MODEL_PATH, os.path.basename(MODEL_PATH))
+        if not self.check_model_exists(lakefs_model_path):
+            raise ValueError("모델이 LakeFS에 없습니다. 먼저 모델을 LakeFS에 업로드해주세요.")
         if upload_to_lakefs(self.lakefs_client, MODEL_PATH, lakefs_model_path):
             return f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/{lakefs_model_path}"
         return MODEL_PATH

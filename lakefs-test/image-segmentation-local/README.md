@@ -1,127 +1,139 @@
-# Image Segmentation with LakeFS and MLflow
+# Image Segmentation with MLOps
 
-이 프로젝트는 이미지 세그멘테이션 모델을 학습하고 추론하는 과정에서 LakeFS를 사용하여 데이터를 버전 관리하고, MLflow로 실험을 추적하는 예제입니다.
+이미지 세그멘테이션 모델의 학습, 버전 관리, 추론을 위한 MLOps 파이프라인입니다.
 
-## 시스템 아키텍처
+## 시스템 구성
 
-### 주요 컴포넌트
-- **LakeFS**: 데이터와 모델의 버전 관리
-- **MLflow**: 실험 추적 및 모델 관리
+- **Git**: 소스 코드 버전 관리
+- **LakeFS**: 데이터와 모델 파일 버전 관리
+- **MLflow**: 실험 메타데이터 추적 및 모델 레지스트리
 
-### 워크플로우
-1. LakeFS 리포지토리에서 데이터 관리
-2. MLflow로 학습 과정 추적
-3. 학습된 모델과 데이터를 LakeFS에 저장
-4. 저장된 모델과 데이터를 사용하여 추론 수행
+## 워크플로우 다이어그램
 
-## 설치 및 실행 방법
+```mermaid
+graph TD
+    subgraph Training
+        A[데이터 준비] --> B[모델 학습]
+        B --> C[모델 저장]
+        C --> D[LakeFS에 업로드]
+        B --> E[MLflow에 메타데이터 기록]
+    end
 
-### 사전 요구사항
-- Docker와 Docker Compose가 설치되어 있어야 합니다.
-- Python 3.8 이상이 필요합니다.
+    subgraph Model Registration
+        D --> F[LakeFS 모델 확인]
+        E --> G[MLflow 실험 결과 확인]
+        F --> H[모델 메타데이터 등록]
+        G --> H
+    end
 
-### 환경 설정
+    subgraph Inference
+        H --> I[MLflow에서 실험 선택]
+        I --> J[LakeFS 모델 경로 확인]
+        J --> K[LakeFS에서 모델/데이터 다운로드]
+        K --> L[추론 수행]
+    end
 
-1. Python 패키지 설치:
+    classDef storage fill:#f9f,stroke:#333,stroke-width:2px
+    classDef process fill:#bbf,stroke:#333,stroke-width:2px
+    class D,F,K storage
+    class B,E,H,L process
+```
+
+## 설치 방법
+
+1. 필요한 패키지 설치:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Docker 서비스 시작:
+2. LakeFS 설정:
+- LakeFS 서버 실행:
 ```bash
-docker compose --profile local-lakefs up -d
+docker compose --profile local-lakefs up
 ```
+- `config.py`에서 LakeFS 접속 정보 설정
 
-### 서비스 접근
-- LakeFS UI: http://localhost:8003
-- MLflow UI: http://localhost:5000
+3. MLflow 설정:
+- MLflow 서버 실행 (docker-compose에 포함)
+- `config.py`에서 MLflow 접속 정보 설정
 
-### 인증 정보
-- LakeFS:
-  - Access Key ID: AKIAIOSFOLKFSSAMPLES
-  - Secret Access Key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+## 시스템 아키텍처
 
-## 프로젝트 구조
-```
-.
-├── config.py                # 설정 파일 (MLflow, LakeFS, 학습 파라미터)
-├── docker-compose.yml       # Docker 서비스 설정
-├── model.py                # 모델 아키텍처 정의
-├── requirements.txt        # Python 패키지 의존성
-├── train.py               # 모델 학습 스크립트
-├── infer.py              # 모델 추론 스크립트
-├── train/                # 학습 관련 클래스들
-│   ├── __init__.py
-│   ├── base_train.py     # 기본 학습 기능
-│   ├── lakefs_train.py   # LakeFS 관련 기능
-│   ├── mlflow_train.py   # MLflow 관련 기능
-│   └── model_train.py    # 전체 학습 과정 관리
-├── inference/            # 추론 관련 클래스들
-│   ├── __init__.py
-│   ├── base_inference.py # 기본 추론 기능
-│   ├── lakefs_inference.py # LakeFS 관련 기능
-│   ├── mlflow_inference.py # MLflow 관련 기능
-│   └── model_inference.py  # 전체 추론 과정 관리
-└── utils/               # 유틸리티 함수들
-    ├── __init__.py
-    ├── dir_utils.py     # 디렉토리 관련 유틸리티
-    ├── lakefs_utils.py  # LakeFS 관련 유틸리티
-    └── mlflow_utils.py  # MLflow 관련 유틸리티
-```
+### 1. 데이터 및 모델 관리
+- **LakeFS**: 실제 데이터와 모델 파일을 저장하고 버전 관리
+  - 학습 데이터: `lakefs://repo-name/main/data/`
+  - 모델 파일: `lakefs://repo-name/main/models/model.pth`
+
+- **MLflow**: 실험 메타데이터 추적
+  - 하이퍼파라미터
+  - 학습 메트릭 (loss, accuracy 등)
+  - LakeFS 모델 경로
+  - Git commit hash
+
+### 2. 워크플로우
+
+1. **모델 학습 (train.py)**
+   - 데이터 준비
+   - 모델 학습 수행
+   - MLflow에 메타데이터 기록:
+     - 하이퍼파라미터
+     - 학습 메트릭
+     - LakeFS 모델 경로
+   - 모델 파일을 LakeFS에 저장
+
+2. **모델 등록 (register_model.py)**
+   - LakeFS에서 모델 존재 확인
+   - MLflow에서 실험 결과 확인
+   - 성능이 기준을 만족하면 모델 메타데이터 등록
+   - 실제 모델은 LakeFS에 유지
+
+3. **모델 추론 (infer.py)**
+   - MLflow에서 실험 선택 (메타데이터)
+   - MLflow에서 LakeFS 모델 경로 확인
+   - LakeFS에서 실제 모델과 데이터 다운로드
+   - 추론 수행
 
 ## 사용 방법
 
-### 모델 학습
+### 1. 모델 학습
 ```bash
 python train.py
 ```
-- MLflow UI에서 학습 과정과 결과를 확인할 수 있습니다.
-- 학습된 모델과 데이터는 LakeFS에 자동으로 저장됩니다.
+- 모델이 학습되고 `models/model.pth` 파일이 생성됩니다.
+- MLflow에 실험 메타데이터가 기록됩니다.
+- 학습된 모델이 LakeFS에 업로드됩니다.
 
-### 모델 추론
+### 2. 모델 등록
+```bash
+python register_model.py
+```
+- LakeFS에 업로드된 모델을 확인합니다.
+- MLflow에 모델 메타데이터를 등록합니다.
+- `--manual` 옵션으로 수동 등록 가능
+
+### 3. 모델 추론
 ```bash
 python infer.py
 ```
-- MLflow UI에서 사용할 실험을 선택합니다.
-- 선택한 실험의 모델과 데이터를 사용하여 추론을 수행합니다.
-- 결과는 `data/predictions` 디렉토리에 저장됩니다.
+- MLflow에서 등록된 모델 메타데이터를 선택합니다.
+- LakeFS에서 실제 모델과 데이터를 다운로드합니다.
+- `--interactive` 옵션으로 수동 모델 선택 가능
 
-## 주요 클래스 및 기능
-
-### ModelInference
-모델을 로드하고 이미지 세그멘테이션을 수행하는 기본 클래스입니다.
-```python
-class ModelInference:
-    """이미지 세그멘테이션 모델 추론 클래스"""
-    def infer(self, model_path):
-        """모델을 로드하고 추론을 수행합니다."""
+## 프로젝트 구조
+```
+image-segmentation-local/
+├── train/              # 학습 관련 모듈
+├── inference/          # 추론 관련 모듈
+├── utils/             # 유틸리티 함수
+├── models/            # 학습된 모델 저장
+├── data/              # 데이터 디렉토리
+├── train.py           # 학습 스크립트
+├── register_model.py  # 모델 등록 스크립트
+└── infer.py           # 추론 스크립트
 ```
 
-### MLflowInference
-MLflow 실험을 관리하고 모델을 선택하는 기능을 처리하는 클래스입니다.
-```python
-class MLflowInference:
-    """MLflow 관련 기능을 처리하는 클래스"""
-    def select_experiment(self, auto_select=True):
-        """실험을 선택합니다.
-        
-        Args:
-            auto_select (bool): True이면 자동으로 최근 실험을 선택하고,
-                              False이면 사용자가 실험을 선택할 수 있습니다.
-        """
-```
+## 주의사항
 
-### LakeFSInference
-LakeFS에서 모델과 데이터를 다운로드하는 기능을 처리하는 클래스입니다.
-```python
-class LakeFSInference:
-    """LakeFS 관련 기능을 처리하는 클래스"""
-    def download_model(self, model_path):
-        """LakeFS에서 모델을 다운로드합니다."""
-    
-    def download_data(self, run_id):
-        """LakeFS에서 데이터를 다운로드합니다."""
-```
-
-## 추론 결과
-추론 결과는 `data/predictions` 디렉토리에 저장됩니다. 각 이미지에 대한 세그멘테이션 마스크가 생성됩니다.
+- LakeFS와 MLflow 서버가 실행 중이어야 합니다.
+- 환경 변수가 올바르게 설정되어 있어야 합니다.
+- Git은 소스 코드 관리, LakeFS는 데이터/모델 관리, MLflow는 메타데이터 추적용으로 사용됩니다.

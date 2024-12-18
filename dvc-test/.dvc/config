@@ -1,0 +1,6 @@
+[core]
+    remote = test
+['remote "test"']
+    url = s3://dataversion-test/dvc
+    configpath = ./aws/config
+    credentialpath = ./aws/credentials

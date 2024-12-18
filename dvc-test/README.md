@@ -131,18 +131,6 @@ dvc pull
 
 ## Git과 DVC 설정 가이드
 
-### 프로젝트 구조
-```
-dvc-test/
-├── .dvc/               # DVC 설정 디렉토리
-├── train/              # 학습 관련 모듈
-├── inference/          # 추론 관련 모듈
-├── setting.py          # AWS S3 설정
-├── config.py           # 프로젝트 설정
-├── train.py           # 학습 실행 스크립트
-├── register_model.py  # 모델 등록 스크립트
-└── infer.py           # 추론 실행 스크립트
-```
 
 ### 주의사항
 
@@ -173,6 +161,18 @@ git push  # 메타데이터 공유
 
 ## 사용 방법
 
+## 프로젝트 구조
+```
+dvc-test/
+├── .dvc/               # DVC 설정 디렉토리
+├── train/              # 학습 관련 모듈
+├── inference/          # 추론 관련 모듈
+├── setting.py          # AWS S3 설정
+├── config.py           # 프로젝트 설정
+├── train.py           # 학습 실행 스크립트
+├── register_model.py  # 모델 등록 스크립트
+└── infer.py           # 추론 실행 스크립트
+```
 ### 1. 모델 학습
 ```bash
 python train.py
@@ -197,18 +197,7 @@ python infer.py
 - DVC에서 실제 모델을 다운로드합니다
 - `--interactive` 옵션으로 수동 모델 선택 가능
 
-## 프로젝트 구조
-```
-dvc-test/
-├── .dvc/               # DVC 설정 디렉토리
-├── train/              # 학습 관련 모듈
-├── inference/          # 추론 관련 모듈
-├── setting.py          # AWS S3 설정
-├── config.py           # 프로젝트 설정
-├── train.py           # 학습 실행 스크립트
-├── register_model.py  # 모델 등록 스크립트
-└── infer.py           # 추론 실행 스크립트
-```
+
 
 ## 데이터셋 정보
 

@@ -41,23 +41,25 @@ graph TD
 
 ## 설치 방법
 
-1. 필요한 패키지 설치:
+1. LakeFS와 MinIO 실행:
+```bash
+docker compose --profile local-lakefs up
+```
+
+2. MLflow 서버 실행:
+```bash
+mlflow server --host localhost --port 5000
+```
+
+3. 필요한 패키지 설치:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. LakeFS 설정:
-- LakeFS 서버 실행:
-```bash
-docker compose --profile local-lakefs up
-```
-- `config.py`에서 LakeFS 접속 정보 설정
+4. 설정:
+- `config.py`에서 서버 정보 설정
 
-3. MLflow 설정:
-- MLflow 서버 실행 (docker-compose에 포함)
-- `config.py`에서 MLflow 접속 정보 설정
-
-## 시스템 아키텍처
+## 기능
 
 ### 1. 데이터 및 모델 관리
 - **LakeFS**: 실제 데이터와 모델 파일을 저장하고 버전 관리
@@ -94,7 +96,18 @@ docker compose --profile local-lakefs up
    - 추론 수행
 
 ## 사용 방법
-
+## 프로젝트 구조
+```
+image-segmentation-local/
+├── train/              # 학습 관련 모듈
+├── inference/          # 추론 관련 모듈
+├── utils/             # 유틸리티 함수
+├── models/            # 학습된 모델 저장
+├── data/              # 데이터 디렉토리
+├── train.py           # 학습 스크립트
+├── register_model.py  # 모델 등록 스크립트
+└── infer.py           # 추론 스크립트
+```
 ### 1. 모델 학습
 ```bash
 python train.py
@@ -119,18 +132,7 @@ python infer.py
 - LakeFS에서 실제 모델과 데이터를 다운로드합니다.
 - `--interactive` 옵션으로 수동 모델 선택 가능
 
-## 프로젝트 구조
-```
-image-segmentation-local/
-├── train/              # 학습 관련 모듈
-├── inference/          # 추론 관련 모듈
-├── utils/             # 유틸리티 함수
-├── models/            # 학습된 모델 저장
-├── data/              # 데이터 디렉토리
-├── train.py           # 학습 스크립트
-├── register_model.py  # 모델 등록 스크립트
-└── infer.py           # 추론 스크립트
-```
+
 
 ## 주의사항
 

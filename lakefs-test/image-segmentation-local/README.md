@@ -1,4 +1,4 @@
-# Image Segmentation with MLOps
+# LakeFS 프로젝트(Image Segmentation with MLOps)
 
 이미지 세그멘테이션 모델의 학습, 버전 관리, 추론을 위한 MLOps 파이프라인입니다.
 

@@ -7,9 +7,8 @@ dvc-test/dvc/test/data/
 dvc-test/test_model.pt
 dvc-test/aws/
 dvc-test/data/
-dvc-test/models/
+dvc-test/models/*.pt
 !dvc-test/models/*.dvc
-!dvc-test/data/*.dvc
 
 # LakeFS project
 lakefs-test/image-segmentation-local/models/

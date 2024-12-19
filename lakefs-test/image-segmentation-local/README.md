@@ -78,8 +78,8 @@ mlflow server --host localhost --port 5000
 
 ### 1. 데이터 및 모델 관리
 - **LakeFS**: 실제 데이터와 모델 파일을 저장하고 버전 관리
-  - 학습 데이터: `lakefs://repo-name/main/data/`
-  - 모델 파일: `lakefs://repo-name/main/models/model.pth`
+  - 학습 데이터: `lakefs://image-segmentation-local-repo/main/data/`
+  - 모델 파일: `lakefs://image-segmentation-local-repo/main/models/model.pth`
 
 - **MLflow**: 실험 메타데이터 추적
   - 하이퍼파라미터

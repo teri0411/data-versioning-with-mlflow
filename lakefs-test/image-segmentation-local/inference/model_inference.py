@@ -26,7 +26,7 @@ class ModelInference:
         
         # MLflow에서 LakeFS 모델 경로 가져오기
         model_path = run.data.params.get("model_path")
-        if not model_path:
+        if model_path is None:
             raise Exception("Model path not found in MLflow metadata")
         
         # LakeFS에서 모델과 데이터 다운로드
@@ -35,9 +35,12 @@ class ModelInference:
         
         # 모델 로드 및 추론
         model = self.base_inference.load_model(local_model_path)
-        predictions = self.base_inference.predict(model)
+        results = self.base_inference.infer_images()
+        
+        # 결과 저장
+        self.base_inference.save_results(results)
         
         print(f"\n추론이 완료되었습니다.")
         print(f"Run ID: {run.info.run_id}")
         print(f"Model: {model_path}")
-        return predictions
+        return results

@@ -1,8 +1,18 @@
-dvc-test/dvc/test/data
+# Python
+**/__pycache__/
+*.py[cod]
+
+# DVC project
+dvc-test/dvc/test/data/
 dvc-test/test_model.pt
-dvc-test/aws
-lakefs-test/image-segmentation-local/models
-lakefs-test/image-segmentation-local/mlruns
-lakefs-test/image-segmentation-local/data
-lakefs-test/image-segmentation-local/results
-lakefs-test/image-segmentation-local/__pycache__
+dvc-test/aws/
+dvc-test/data/
+dvc-test/models/
+!dvc-test/models/*.dvc
+!dvc-test/data/*.dvc
+
+# LakeFS project
+lakefs-test/image-segmentation-local/models/
+lakefs-test/image-segmentation-local/mlruns/
+lakefs-test/image-segmentation-local/data/
+lakefs-test/image-segmentation-local/outputs/

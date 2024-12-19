@@ -21,7 +21,7 @@ class ModelRegistrar:
         """
         # LakeFS에서 모델 존재 확인
         model_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/models/model.pth"
-        if not self.lakefs_train.check_model_exists():
+        if not self.lakefs_train.check_model_exists(model_path):
             raise Exception("Model not found in LakeFS")
         
         # MLflow에서 최근 실험 결과 확인
@@ -30,6 +30,10 @@ class ModelRegistrar:
             if len(runs) == 0:
                 raise Exception("No MLflow runs found")
             run = runs.iloc[0]
+            metrics = {
+                "loss": run["metrics.loss"],
+                "accuracy": run["metrics.accuracy"]
+            }
         else:
             # 수동으로 실험 선택
             print("\n=== MLflow 실험 목록 ===")
@@ -37,18 +41,22 @@ class ModelRegistrar:
             for i, run in runs.iterrows():
                 print(f"{i}. Run ID: {run.run_id}")
                 print(f"   Start Time: {run.start_time}")
-                print(f"   Metrics: {run.metrics}")
+                print(f"   Loss: {run['metrics.loss']:.4f}")
+                print(f"   Accuracy: {run['metrics.accuracy']:.4f}")
                 print()
             
             idx = input("등록할 실험 번호를 선택하세요: ")
             run = runs.iloc[int(idx)]
+            metrics = {
+                "loss": run["metrics.loss"],
+                "accuracy": run["metrics.accuracy"]
+            }
         
         # 모델 메타데이터 등록
-        metrics = {k: v for k, v in run.data.metrics.items()}
         self.mlflow_train.register_model(run.run_id, metrics)
         print(f"\n모델이 성공적으로 등록되었습니다.")
         print(f"Run ID: {run.run_id}")
-        print(f"Model Path: {model_path}")
+        print(f"Model Path: {run['params.model_path']}")
 
 def main():
     """메인 함수"""

@@ -19,6 +19,7 @@ class BaseInference:
         print(f"\n모델 로드 중... ({model_path})")
         self.model.load_state_dict(torch.load(model_path, map_location=self.device))
         self.model.eval()
+        return self.model
     
     def infer_images(self):
         """모든 이미지에 대해 추론을 수행합니다."""

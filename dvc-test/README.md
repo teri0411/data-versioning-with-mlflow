@@ -17,21 +17,21 @@ graph TD
     subgraph Training
         A[데이터 준비] --> B[DVC pull data]
         B --> C[모델 학습]
-        C --> D[모델 저장]
-        D --> E[DVC add model]
-        C --> F[MLflow에 메타데이터 기록]
+        C --> D[모델 pt파일로 저장]
+        D --> E[DVC에 model 업로드]
+        C --> F[MLflow experiment 기록]
     end
 
-    subgraph Model Registration
-        E --> G[DVC 모델 확인]
+    subgraph Model Registration [선택사항]
+        E --> G[DVC에 모델 존재 확인]
         F --> H[MLflow 실험 결과 확인]
-        G --> I[모델 메타데이터 등록]
+        G --> I[모델 등록]
         H --> I
     end
 
     subgraph Inference
-        I --> J[MLflow에서 실험 선택]
-        J --> K[DVC 모델 경로 확인]
+        F --> J[MLflow에서 실험 선택]
+        J --> K[DVC에 모델 및 데이터 경로 확인]
         K --> L[DVC pull model]
         L --> M[추론 수행]
     end
@@ -40,6 +40,18 @@ graph TD
     classDef process fill:#bbf,stroke:#333,stroke-width:2px
     class B,E,G,L storage
     class C,F,I,M process
+```
+## 프로젝트 구조
+```
+dvc-test/
+├── .dvc/               # DVC 설정 디렉토리
+├── train/              # 학습 관련 모듈
+├── inference/          # 추론 관련 모듈
+├── setting.py          # AWS S3 설정
+├── config.py           # 프로젝트 설정
+├── train.py           # 학습 실행 스크립트
+├── register_model.py  # 모델 등록 스크립트 (선택사항)
+└── infer.py           # 추론 실행 스크립트
 ```
 
 ## 디팬던시 설치
@@ -103,7 +115,7 @@ dvc pull
 - **MLflow**: 실험 메타데이터 추적
   - 하이퍼파라미터
   - 학습 메트릭 (MAE, RMSE 등)
-  - DVC 모델 경로
+  - DVC 모델/데이터 경로
   - Git commit hash
 
 ### 2. 워크플로우
@@ -114,18 +126,18 @@ dvc pull
    - MLflow에 메타데이터 기록:
      - 하이퍼파라미터
      - 학습 메트릭
-     - DVC 모델 경로
+     - DVC 모델/데이터 경로
    - 모델 파일을 DVC에 저장
 
-2. **모델 등록 (register_model.py)**
-   - DVC에서 모델 존재 확인
+2. **모델 등록 (register_model.py) [선택사항]**
    - MLflow에서 실험 결과 확인
    - 성능이 기준을 만족하면 모델 메타데이터 등록
    - 실제 모델은 DVC에 유지
+   - infer.py에서 MLflow의 메타데이터를 통해 DVC에서 직접 모델을 가져올 수 있으므로 이 단계는 선택사항입니다.
 
 3. **모델 추론 (infer.py)**
    - MLflow에서 실험 선택 (메타데이터)
-   - MLflow에서 DVC 모델 경로 확인
+   - MLflow에서 DVC 모델/데이터 경로 확인
    - DVC에서 실제 모델 다운로드
    - 추론 수행
 
@@ -161,18 +173,7 @@ git push  # 메타데이터 공유
 
 ## 사용 방법
 
-## 프로젝트 구조
-```
-dvc-test/
-├── .dvc/               # DVC 설정 디렉토리
-├── train/              # 학습 관련 모듈
-├── inference/          # 추론 관련 모듈
-├── setting.py          # AWS S3 설정
-├── config.py           # 프로젝트 설정
-├── train.py           # 학습 실행 스크립트
-├── register_model.py  # 모델 등록 스크립트
-└── infer.py           # 추론 실행 스크립트
-```
+
 ### 1. 모델 학습
 ```bash
 python train.py
@@ -181,13 +182,13 @@ python train.py
 - 모델이 학습되고 DVC에 저장됩니다
 - MLflow에 실험 메타데이터가 기록됩니다
 
-### 2. 모델 등록
+### 2. 모델 등록 (선택사항)
 ```bash
 python register_model.py
 ```
-- DVC에 저장된 모델을 확인합니다
 - MLflow에 모델 메타데이터를 등록합니다
 - `--manual` 옵션으로 수동 등록 가능
+- infer.py에서 MLflow의 메타데이터를 통해 DVC에서 직접 모델을 가져올 수 있으므로 이 단계는 선택사항입니다.
 
 ### 3. 모델 추론
 ```bash
@@ -196,8 +197,6 @@ python infer.py
 - MLflow에서 등록된 모델 메타데이터를 선택합니다
 - DVC에서 실제 모델을 다운로드합니다
 - `--interactive` 옵션으로 수동 모델 선택 가능
-
-
 
 ## 데이터셋 정보
 

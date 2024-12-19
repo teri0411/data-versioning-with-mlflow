@@ -16,18 +16,18 @@ graph TD
         A[데이터 준비] --> B[모델 학습]
         B --> C[모델 저장]
         C --> D[LakeFS에 업로드]
-        B --> E[MLflow에 메타데이터 기록]
+        B --> E[MLflow experiment 기록]
     end
 
-    subgraph Model Registration
+    subgraph Model Registration [선택사항]
         D --> F[LakeFS 모델 확인]
         E --> G[MLflow 실험 결과 확인]
-        F --> H[모델 메타데이터 등록]
+        F --> H[모델 등록]
         G --> H
     end
 
     subgraph Inference
-        H --> I[MLflow에서 실험 선택]
+        E --> I[MLflow에서 실험 선택]
         I --> J[LakeFS 모델 경로 확인]
         J --> K[LakeFS에서 모델/데이터 다운로드]
         K --> L[추론 수행]
@@ -39,25 +39,40 @@ graph TD
     class B,E,H,L process
 ```
 
+## 프로젝트 구조
+```
+image-segmentation-local/
+├── train/              # 학습 관련 모듈
+├── inference/          # 추론 관련 모듈
+├── utils/             # 유틸리티 함수
+├── models/            # 학습된 모델 저장
+├── data/              # 데이터 디렉토리
+├── train.py           # 학습 스크립트
+├── register_model.py  # 모델 등록 스크립트 (선택사항)
+└── infer.py           # 추론 스크립트
+```
+
 ## 설치 방법
-
-1. LakeFS와 MinIO 실행:
-```bash
-docker compose --profile local-lakefs up
-```
-
-2. MLflow 서버 실행:
-```bash
-mlflow server --host localhost --port 5000
-```
-
-3. 필요한 패키지 설치:
+1. 필요한 패키지 설치:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. 설정:
-- `config.py`에서 서버 정보 설정
+2. 설정:
+```
+config.py 에서 서버 정보 설정
+```
+3. LakeFS와 MinIO 실행:
+```bash
+docker compose --profile local-lakefs up
+```
+
+4. MLflow 서버 실행:
+```bash
+mlflow server --host localhost --port 5000
+``` 
+
+
 
 ## 기능
 
@@ -80,34 +95,23 @@ pip install -r requirements.txt
    - MLflow에 메타데이터 기록:
      - 하이퍼파라미터
      - 학습 메트릭
-     - LakeFS 모델 경로
+     - LakeFS 모델/데이터 경로
    - 모델 파일을 LakeFS에 저장
 
-2. **모델 등록 (register_model.py)**
-   - LakeFS에서 모델 존재 확인
+2. **모델 등록 (register_model.py) [선택사항]**
    - MLflow에서 실험 결과 확인
    - 성능이 기준을 만족하면 모델 메타데이터 등록
    - 실제 모델은 LakeFS에 유지
+   - infer.py는 MLflow의 메타데이터를 통해 LakeFS에서 직접 모델을 가져올 수 있으므로 선택사항입니다.
 
 3. **모델 추론 (infer.py)**
    - MLflow에서 실험 선택 (메타데이터)
-   - MLflow에서 LakeFS 모델 경로 확인
+   - MLflow에서 LakeFS 모델/데이터 경로 확인
    - LakeFS에서 실제 모델과 데이터 다운로드
    - 추론 수행
 
 ## 사용 방법
-## 프로젝트 구조
-```
-image-segmentation-local/
-├── train/              # 학습 관련 모듈
-├── inference/          # 추론 관련 모듈
-├── utils/             # 유틸리티 함수
-├── models/            # 학습된 모델 저장
-├── data/              # 데이터 디렉토리
-├── train.py           # 학습 스크립트
-├── register_model.py  # 모델 등록 스크립트
-└── infer.py           # 추론 스크립트
-```
+
 ### 1. 모델 학습
 ```bash
 python train.py
@@ -116,13 +120,13 @@ python train.py
 - MLflow에 실험 메타데이터가 기록됩니다.
 - 학습된 모델이 LakeFS에 업로드됩니다.
 
-### 2. 모델 등록
+### 2. 모델 등록 (선택사항)
 ```bash
 python register_model.py
 ```
-- LakeFS에 업로드된 모델을 확인합니다.
 - MLflow에 모델 메타데이터를 등록합니다.
 - `--manual` 옵션으로 수동 등록 가능
+- infer.py에서 MLflow의 메타데이터를 통해 LakeFS에서 직접 모델을 가져올 수 있으므로 이 단계는 선택사항입니다.
 
 ### 3. 모델 추론
 ```bash
@@ -131,8 +135,6 @@ python infer.py
 - MLflow에서 등록된 모델 메타데이터를 선택합니다.
 - LakeFS에서 실제 모델과 데이터를 다운로드합니다.
 - `--interactive` 옵션으로 수동 모델 선택 가능
-
-
 
 ## 주의사항
 

@@ -4,7 +4,7 @@ from lakefs_client import models
 from lakefs_client.client import LakeFSClient
 from config import *
 
-def setup_lakefs_client():
+def setup_lakefs_client(create_if_not_exists=False):
     """LakeFS 클라이언트를 설정하고 반환합니다."""
     configuration = lakefs_client.Configuration()
     configuration.host = LAKEFS_ENDPOINT
@@ -12,34 +12,48 @@ def setup_lakefs_client():
     configuration.password = LAKEFS_SECRET_KEY
     client = LakeFSClient(configuration)
     
-    # 저장소가 없으면 생성
+    # 저장소가 없으면 생성 (train.py에서만 사용)
     try:
         client.repositories.get_repository(LAKEFS_REPO_NAME)
     except lakefs_client.exceptions.NotFoundException:
-        client.repositories.create_repository(
-            models.RepositoryCreation(
-                name=LAKEFS_REPO_NAME,
-                storage_namespace=f"s3://{LAKEFS_REPO_NAME}",
-                default_branch=LAKEFS_BRANCH,
+        if create_if_not_exists:
+            client.repositories.create_repository(
+                models.RepositoryCreation(
+                    name=LAKEFS_REPO_NAME,
+                    storage_namespace=f"s3://{LAKEFS_REPO_NAME}",
+                    default_branch=LAKEFS_BRANCH,
+                )
             )
-        )
-        print(f"Repository '{LAKEFS_REPO_NAME}' created successfully!")
-    else:
-        print(f"Repository '{LAKEFS_REPO_NAME}' already exists.")
+            print(f"Repository '{LAKEFS_REPO_NAME}' created successfully!")
+        else:
+            raise
     
     return client
 
 def upload_to_lakefs(client, local_path, lakefs_path):
-    """파일을 LakeFS에 업로드합니다."""
+    """파일이나 디렉토리를 LakeFS에 업로드합니다."""
     try:
-        with open(local_path, 'rb') as f:
-            client.objects.upload_object(
-                repository=LAKEFS_REPO_NAME,
-                branch=LAKEFS_BRANCH,
-                path=lakefs_path,
-                content=f
-            )
-        return True
+        # 디렉토리인 경우
+        if os.path.isdir(local_path):
+            success = True
+            for filename in os.listdir(local_path):
+                local_file = os.path.join(local_path, filename)
+                lakefs_file = os.path.join(lakefs_path, filename).replace('\\', '/')
+                if not upload_to_lakefs(client, local_file, lakefs_file):
+                    success = False
+            return success
+        
+        # 파일인 경우
+        else:
+            with open(local_path, 'rb') as f:
+                client.objects.upload_object(
+                    repository=LAKEFS_REPO_NAME,
+                    branch=LAKEFS_BRANCH,
+                    path=lakefs_path,
+                    content=f
+                )
+            print(f"파일 업로드 완료: {lakefs_path}")
+            return True
     except Exception as e:
         print(f"Error uploading {local_path} to LakeFS: {str(e)}")
         return False

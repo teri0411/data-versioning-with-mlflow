@@ -56,7 +56,7 @@ class ModelRegistrar:
         
         with mlflow.start_run(run_id=run.run_id):
             mlflow.register_model(
-                model_uri=dvc_paths['model_path'],
+                model_uri=f"runs:/{run.run_id}/model",
                 name="wine_quality_model",
                 tags={"source_run": run.run_id}
             )

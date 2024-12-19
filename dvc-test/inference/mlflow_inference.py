@@ -3,6 +3,7 @@ import mlflow
 import torch
 import pandas as pd
 import numpy as np
+import pickle
 from typing import Optional, Tuple
 from .base_inference import BaseInference
 from config import MLFLOW_TRACKING_URI, EXPERIMENT_NAME
@@ -66,23 +67,34 @@ class MLflowInference(BaseInference):
             
         return data_path, model_path
     
-    def load_model(self, model_path: str) -> Optional[Tuple[WineQualityModel, object]]:
-        """Load model and scaler from checkpoint"""
+    def get_file(self, file_path: str):
+        """Get file from DVC"""
+        dvc_file = f"{file_path}.dvc"
+        if not os.path.exists(dvc_file):
+            print(f"Warning: {dvc_file} not found, assuming {file_path} is already in place")
+            return
+            
+        try:
+            import subprocess
+            result = subprocess.run(['dvc', 'pull', dvc_file], 
+                                 capture_output=True, 
+                                 text=True,
+                                 check=True)
+            if result.returncode == 0:
+                print(f"Successfully pulled {file_path} using DVC")
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Failed to pull {file_path} using DVC: {e}")
+            print("Will try to use existing file if available")
+    
+    def load_model(self, model_path: str) -> Optional[Tuple[object, object]]:
+        """Load model from pickle file"""
         if not os.path.exists(model_path):
             raise Exception(f"Model file not found: {model_path}")
         
         try:
-            checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
-            
-            # Create model instance with input dimension from state dict
-            input_dim = checkpoint['model_state_dict']['linear.weight'].shape[1]
-            model = WineQualityModel(input_dim=input_dim)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            
-            self.model = model
-            self.scaler = checkpoint['scaler_state']
-            
-            return model, checkpoint['scaler_state']
+            with open(model_path, 'rb') as f:
+                self.model = pickle.load(f)
+            return self.model, None
             
         except Exception as e:
             print(f"Warning: Failed to load model: {e}")
@@ -90,22 +102,16 @@ class MLflowInference(BaseInference):
     
     def load_data(self, data_path: str) -> str:
         """Load data using DVC"""
+        self.get_file(data_path)
         try:
-            with dvc.api.open(data_path) as f:
+            with open(data_path, 'r') as f:
                 return f.read()
         except Exception as e:
             raise RuntimeError(f"Failed to load from DVC: {e}")
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Make predictions using the loaded model"""
-        if self.model is None or self.scaler is None:
-            raise Exception("Model and scaler must be loaded before prediction")
-        
-        # Preprocess data
-        X_scaled = self.scaler.transform(X)
-        
-        # Make predictions
-        with torch.no_grad():
-            predictions = self.model(torch.FloatTensor(X_scaled)).numpy()
-        
-        return predictions
+        if self.model is None:
+            raise Exception("Model must be loaded before prediction")
+            
+        return self.model.predict(X)

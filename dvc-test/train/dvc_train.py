@@ -44,12 +44,14 @@ class DVCTrain:
             
         print(f"Model saved to {MODEL_PATH}")
         
-        # Add to DVC
+        # Add to DVC and push
         try:
             os.system(f"dvc add {MODEL_PATH}")
             print(f"Model added to DVC tracking")
+            os.system(f"dvc push")
+            print(f"Model pushed to remote storage")
         except Exception as e:
-            print(f"Warning: Failed to add model to DVC: {e}")
+            print(f"Warning: Failed to add/push model to DVC: {e}")
             
     def load_model(self):
         """Load model from DVC tracked path"""

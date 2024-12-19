@@ -1,9 +1,12 @@
 import os
 import pickle
 import numpy as np
+import subprocess
 from sklearn.linear_model import ElasticNet
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from config import MODEL_PATH
+from config import MODEL_PATH, setup_logging
+
+logger = setup_logging()
 
 class DVCTrain:
     def __init__(self):
@@ -35,23 +38,45 @@ class DVCTrain:
         
     def save_model(self):
         """Save model to DVC tracked path"""
-        # Ensure model directory exists
-        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        
-        # Save model
-        with open(MODEL_PATH, 'wb') as f:
-            pickle.dump(self.model, f)
-            
-        print(f"Model saved to {MODEL_PATH}")
-        
-        # Add to DVC and push
         try:
-            os.system(f"dvc add {MODEL_PATH}")
-            print(f"Model added to DVC tracking")
-            os.system(f"dvc push")
-            print(f"Model pushed to remote storage")
+            # Ensure model directory exists
+            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+            logger.info(f"Created directory: {os.path.dirname(MODEL_PATH)}")
+            
+            # Save model
+            with open(MODEL_PATH, 'wb') as f:
+                pickle.dump(self.model, f)
+            logger.info(f"Model saved to {MODEL_PATH}")
+            
+            # Add to DVC
+            result = subprocess.run(['dvc', 'add', MODEL_PATH], 
+                                capture_output=True,
+                                text=True,
+                                check=True)
+            logger.info(f"Model added to DVC tracking: {result.stdout}")
+            
+            # Git add the .dvc file
+            dvc_file = f"{MODEL_PATH}.dvc"
+            result = subprocess.run(['git', 'add', dvc_file],
+                                capture_output=True,
+                                text=True,
+                                check=True)
+            logger.info(f"Added {dvc_file} to git")
+            
+            # DVC push
+            result = subprocess.run(['dvc', 'push'], 
+                                capture_output=True,
+                                text=True,
+                                check=True)
+            logger.info(f"Model pushed to remote storage: {result.stdout}")
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Command '{e.cmd}' failed with exit status {e.returncode}")
+            logger.error(f"Error output: {e.stderr}")
+            raise
         except Exception as e:
-            print(f"Warning: Failed to add/push model to DVC: {e}")
+            logger.error(f"Error saving model: {str(e)}")
+            raise
             
     def load_model(self):
         """Load model from DVC tracked path"""
@@ -61,7 +86,7 @@ class DVCTrain:
         with open(MODEL_PATH, 'rb') as f:
             self.model = pickle.load(f)
             
-        print(f"Model loaded from {MODEL_PATH}")
+        logger.info(f"Model loaded from {MODEL_PATH}")
         
     def predict(self, X):
         """Make predictions using loaded model"""

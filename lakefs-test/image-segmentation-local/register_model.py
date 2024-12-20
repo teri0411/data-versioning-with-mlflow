@@ -2,7 +2,25 @@ import argparse
 import mlflow
 from train.mlflow_train import MLflowTrain
 from train.lakefs_train import LakeFSTrain
-from config import LAKEFS_REPO_NAME, LAKEFS_BRANCH
+from config import LAKEFS_REPO_NAME, LAKEFS_BRANCH, MODEL_PATH
+
+def register_model_to_registry(run_id, metrics):
+    """모델을 MLflow 모델 레지스트리에 등록합니다."""
+    model_name = "image_segmentation"
+    
+    # 모델 등록
+    try:
+        result = mlflow.register_model(
+            f"runs:/{run_id}/model",
+            model_name
+        )
+        print(f"\n=== 모델 등록 완료 ===")
+        print(f"모델 이름: {result.name}")
+        print(f"버전: {result.version}")
+        return result
+    except Exception as e:
+        print(f"모델 등록 중 오류 발생: {str(e)}")
+        return None
 
 class ModelRegistrar:
     """모델 등록을 담당하는 클래스"""
@@ -20,8 +38,7 @@ class ModelRegistrar:
             auto_register (bool): 자동으로 모델을 등록할지 여부
         """
         # LakeFS에서 모델 존재 확인
-        model_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/models/model.pth"
-        if not self.lakefs_train.check_model_exists(model_path):
+        if not self.lakefs_train.check_model_exists("models/model.pth"):
             raise Exception("Model not found in LakeFS")
         
         # MLflow에서 최근 실험 결과 확인
@@ -52,11 +69,12 @@ class ModelRegistrar:
                 "accuracy": run["metrics.accuracy"]
             }
         
-        # 모델 메타데이터 등록
-        self.mlflow_train.register_model(run.run_id, metrics)
-        print(f"\n모델이 성공적으로 등록되었습니다.")
-        print(f"Run ID: {run.run_id}")
-        print(f"Model Path: {run['params.model_path']}")
+        # 모델 등록
+        result = register_model_to_registry(run.run_id, metrics)
+        if result:
+            print(f"\n모델이 성공적으로 등록되었습니다.")
+            print(f"Run ID: {run.run_id}")
+            print(f"Model Path: {run['params.model_path']}")
 
 def main():
     """메인 함수"""

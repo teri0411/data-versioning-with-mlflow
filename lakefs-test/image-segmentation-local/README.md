@@ -2,6 +2,8 @@
 
 이미지 세그멘테이션 모델의 학습, 버전 관리, 추론을 위한 MLOps 파이프라인입니다.
 
+
+
 ## 시스템 구성
 
 - **Git**: 소스 코드 버전 관리
@@ -157,6 +159,106 @@ mlflow server --host localhost --port 5000
 
 
 
+## 상세 작업 단계
+
+### 1. 초기 데이터 설정
+
+초기 데이터 설정은 다음 단계로 진행됩니다:
+
+1. **데이터 디렉토리 생성**
+```bash
+mkdir -p data/images data/masks models
+```
+
+2. **Docker 컨테이너 실행**
+```bash
+docker-compose up -d  # LakeFS, MinIO, MLflow 실행
+```
+
+3. **학습 데이터 준비**
+   - 데이터 다운로드 또는 복사
+   - 데이터 전처리 작업 수행
+
+4. **LakeFS에 데이터 업로드**
+```bash
+python train.py
+```
+
+5. **Git 커밋 및 태그 생성**
+```bash
+# 변경사항 커밋
+git add .
+git commit -m """학습 데이터 추가
+
+LakeFS 업로드 정보:
+- LakeFS 커밋: [출력된 커밋 ID]
+- 업로드된 파일: data/images/*, data/masks/*"""
+
+# 초기 태그 생성
+git tag -a "v0.1-initial" -m """
+초기 데이터셋 설정
+
+LakeFS 정보:
+- 커밋: [LakeFS 커밋 ID]
+- 데이터: data/images/*, data/masks/*"""
+
+# 변경사항 푸시
+git push origin main
+git push origin v0.1-initial
+```
+
+### 2. 모델 학습 및 버전 관리
+
+모델 학습과 버전 관리는 다음 단계로 진행됩니다:
+
+1. **모델 학습 실행**
+```bash
+python train.py
+
+# 예상 출력:
+=== LakeFS 커밋 완료 ===
+커밋 ID: abc123...
+=== Git 커밋 시 추가할 내용 ===
+LakeFS 업로드 정보:
+- LakeFS 커밋: abc123...
+- 업로드된 파일: models/model.pth
+- 모델 성능: accuracy 85%
+```
+
+2. **학습 결과 커밋**
+```bash
+git add .
+git commit -m """첫 번째 모델 학습 완료: accuracy 85%
+
+LakeFS 업로드 정보:
+- LakeFS 커밋: abc123...
+- 업로드된 파일: models/model.pth
+- 하이퍼파라미터:
+  - learning_rate: 0.001
+  - epochs: 10"""
+```
+
+3. **모델 버전 태그 생성**
+```bash
+git tag -a "v1.0-acc85" -m """
+첫 번째 학습 모델: Accuracy 85%
+
+LakeFS 정보:
+- 커밋: abc123...
+- 모델 파일: models/model.pth
+- 주요 개선사항:
+  - 기본 CNN 아키텍처 구현
+  - 데이터 증강 적용"""
+```
+
+4. **변경사항 푸시**
+```bash
+git push origin main
+git push origin v1.0-acc85
+```
+
+각 단계는 Git과 LakeFS를 통해 코드, 데이터, 모델의 버전을 추적하며, MLflow를 통해 실험 결과를 기록합니다. 이를 통해 모델의 전체 개발 과정을 추적하고 재현할 수 있습니다.
+
 ## 기능
 
 ### 1. 데이터 및 모델 관리
@@ -224,4 +326,3 @@ python infer.py
 - LakeFS와 MLflow 서버가 실행 중이어야 합니다.
 - 환경 변수가 올바르게 설정되어 있어야 합니다.
 - Git은 소스 코드 관리, LakeFS는 데이터/모델 관리, MLflow는 메타데이터 추적용으로 사용됩니다.
-

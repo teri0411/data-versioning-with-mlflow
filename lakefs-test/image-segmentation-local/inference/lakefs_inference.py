@@ -31,24 +31,19 @@ class LakeFSInference:
     def download_data(self, run_id):
         """LakeFS에서 데이터를 다운로드합니다."""
         # 이미지와 마스크 디렉토리 생성
-        images_path = os.path.join(DATA_PATH, "images")
-        masks_path = os.path.join(DATA_PATH, "masks")
-        os.makedirs(images_path, exist_ok=True)
-        os.makedirs(masks_path, exist_ok=True)
+        os.makedirs(IMAGES_DIR, exist_ok=True)
+        os.makedirs(MASKS_DIR, exist_ok=True)
         
         # LakeFS에서 데이터 다운로드
-        lakefs_images_path = "data/images"  # 기본 데이터 경로 사용
-        lakefs_masks_path = "data/masks"
+        print(f"LakeFS 이미지 경로: {LAKEFS_IMAGES_PATH}")
+        print(f"LakeFS 마스크 경로: {LAKEFS_MASKS_PATH}")
+        print(f"로컬 이미지 경로: {IMAGES_DIR}")
+        print(f"로컬 마스크 경로: {MASKS_DIR}")
         
-        print(f"LakeFS 이미지 경로: {lakefs_images_path}")
-        print(f"LakeFS 마스크 경로: {lakefs_masks_path}")
-        print(f"로컬 이미지 경로: {images_path}")
-        print(f"로컬 마스크 경로: {masks_path}")
-        
-        if not download_from_lakefs(self.lakefs_client, lakefs_images_path, images_path):
+        if not download_from_lakefs(self.lakefs_client, LAKEFS_IMAGES_PATH, IMAGES_DIR):
             raise Exception("LakeFS에서 이미지 다운로드 실패")
             
-        if not download_from_lakefs(self.lakefs_client, lakefs_masks_path, masks_path):
+        if not download_from_lakefs(self.lakefs_client, LAKEFS_MASKS_PATH, MASKS_DIR):
             raise Exception("LakeFS에서 마스크 다운로드 실패")
             
         print("데이터 다운로드 완료")

@@ -1,13 +1,18 @@
 from utils.dir_utils import ensure_directories
 from train.model_train import ModelTrain
 from train.mlflow_train import MLflowTrain
-from config import LAKEFS_REPO_NAME, LAKEFS_BRANCH, MODEL_FILENAME
+from config import (
+    LAKEFS_REPO_NAME, LAKEFS_BRANCH,
+    MODEL_PATH, IMAGES_DIR, MASKS_DIR,
+    LAKEFS_MODEL_FILE_PATH, LAKEFS_IMAGES_PATH, LAKEFS_MASKS_PATH
+)
 from utils.lakefs_utils import setup_lakefs_client, upload_to_lakefs, commit_to_lakefs_with_git, get_latest_commit
 import mlflow
 import os
 import git
 
 def get_git_commit_hash():
+    """Git 커밋 해시를 가져옵니다."""
     try:
         repo = git.Repo(search_parent_directories=True)
         return repo.head.commit.hexsha
@@ -17,46 +22,32 @@ def get_git_commit_hash():
 def upload_file_to_lakefs(client, local_path, lakefs_path, uploaded_files):
     """파일을 LakeFS에 업로드하고 변경 여부를 반환합니다."""
     if upload_to_lakefs(client, local_path, lakefs_path):
-        # 디렉토리인 경우 와일드카드(*) 추가
         display_path = f"{lakefs_path}/*" if os.path.isdir(local_path) else lakefs_path
         uploaded_files.append(display_path)
         return True
     return False
 
-def main():
-    # 필요한 디렉토리 생성
-    ensure_directories()
-    
-    # LakeFS 클라이언트 설정
-    client = setup_lakefs_client(create_if_not_exists=True)
-    
-    # 모델 학습
+def train_model():
+    """모델을 학습하고 메트릭을 반환합니다."""
     model_train = ModelTrain()
-    model_train.train()  # 모델 학습 실행
-    metrics = model_train.get_metrics()  # 메트릭 가져오기
-    
-    # 절대 경로 생성
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(current_dir, "models/model.pth")
-    images_path = os.path.join(current_dir, "data/images")
-    masks_path = os.path.join(current_dir, "data/masks")
+    model_train.train()
+    return model_train.get_metrics(), model_train
 
-    # LakeFS에 파일 업로드
+def upload_to_lakefs_storage(client, metrics):
+    """모델과 데이터를 LakeFS에 업로드하고 커밋 정보를 반환합니다."""
     uploaded_files = []
     changes_detected = False
     
-    # 파일 업로드 실행
     upload_targets = [
-        (model_path, "models/model.pth"),
-        (images_path, "data/images"),
-        (masks_path, "data/masks")
+        (MODEL_PATH, LAKEFS_MODEL_FILE_PATH),
+        (IMAGES_DIR, LAKEFS_IMAGES_PATH),
+        (MASKS_DIR, LAKEFS_MASKS_PATH)
     ]
     
     for local_path, lakefs_path in upload_targets:
         if upload_file_to_lakefs(client, local_path, lakefs_path, uploaded_files):
             changes_detected = True
     
-    # 변경사항이 있는 경우 LakeFS에 커밋
     commit_info = None
     if changes_detected:
         commit_info = commit_to_lakefs_with_git(
@@ -76,16 +67,18 @@ def main():
     else:
         print("\n=== 변경사항 없음 ===")
         print("모든 파일이 최신 상태입니다.")
-        # 변경사항이 없을 경우 최신 커밋 정보 가져오기
         commit_info = get_latest_commit(client)
+    
+    return commit_info, uploaded_files
 
-    # MLflow 실험 기록 (변경사항 여부와 관계없이 항상 실행)
+def log_to_mlflow(metrics, model_train, commit_info):
+    """학습 결과를 MLflow에 기록합니다."""
     mlflow_train = MLflowTrain()
     with mlflow.start_run():
-        # LakeFS 경로
-        lakefs_model_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/models/model.pth"
-        lakefs_images_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/data/images"
-        lakefs_masks_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/data/masks"
+        # LakeFS 경로 설정
+        lakefs_model_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/{LAKEFS_MODEL_FILE_PATH}"
+        lakefs_images_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/{LAKEFS_IMAGES_PATH}"
+        lakefs_masks_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/{LAKEFS_MASKS_PATH}"
         
         # 메트릭과 파라미터 기록
         parameters = {
@@ -109,14 +102,31 @@ def main():
         
         mlflow_train.log_tags(tags)
         
+        # 결과 출력
         print("\n=== MLflow 태그 기록 완료 ===")
         print(f"Git 커밋: {git_commit}")
         print(f"LakeFS 커밋: {commit_info.get('id', 'N/A') if commit_info else 'N/A'}")
         
-        # 모델 및 데이터 경로 출력
         print(f"\n모델 경로: {lakefs_model_path}")
         print(f"이미지 경로: {lakefs_images_path}")
         print(f"마스크 경로: {lakefs_masks_path}")
+
+def main():
+    """메인 함수"""
+    # 필요한 디렉토리 생성
+    ensure_directories()
+    
+    # LakeFS 클라이언트 설정
+    client = setup_lakefs_client(create_if_not_exists=True)
+    
+    # 모델 학습
+    metrics, model_train = train_model()
+    
+    # LakeFS에 업로드
+    commit_info, _ = upload_to_lakefs_storage(client, metrics)
+    
+    # MLflow에 기록
+    log_to_mlflow(metrics, model_train, commit_info)
 
 if __name__ == "__main__":
     main()

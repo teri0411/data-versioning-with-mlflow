@@ -24,7 +24,7 @@ class BaseInference:
     def infer_images(self):
         """모든 이미지에 대해 추론을 수행합니다."""
         results = []
-        images_dir = os.path.join(DATA_PATH, "images")
+        images_dir = os.path.join(DATA_DIR, "images")
         
         print("\n추론 시작...")
         for image_file in os.listdir(images_dir):
@@ -59,7 +59,7 @@ class BaseInference:
     def save_results(self, results):
         """추론 결과를 저장합니다."""
         print("\n결과 저장 중...")
-        output_dir = os.path.join(DATA_PATH, "predictions")
+        output_dir = os.path.join(DATA_DIR, "predictions")
         os.makedirs(output_dir, exist_ok=True)
         
         for image_file, output in results:

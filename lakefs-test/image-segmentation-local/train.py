@@ -14,6 +14,15 @@ def get_git_commit_hash():
     except git.exc.InvalidGitRepositoryError:
         return None
 
+def upload_file_to_lakefs(client, local_path, lakefs_path, uploaded_files):
+    """파일을 LakeFS에 업로드하고 변경 여부를 반환합니다."""
+    if upload_to_lakefs(client, local_path, lakefs_path):
+        # 디렉토리인 경우 와일드카드(*) 추가
+        display_path = f"{lakefs_path}/*" if os.path.isdir(local_path) else lakefs_path
+        uploaded_files.append(display_path)
+        return True
+    return False
+
 def main():
     # 필요한 디렉토리 생성
     ensure_directories()
@@ -23,7 +32,7 @@ def main():
     
     # 모델 학습
     model_train = ModelTrain()
-    model_train.train()  # 모델 반환
+    model_train.train()  # 모델 학습 실행
     metrics = model_train.get_metrics()  # 메트릭 가져오기
     
     # 절대 경로 생성
@@ -32,26 +41,23 @@ def main():
     images_path = os.path.join(current_dir, "data/images")
     masks_path = os.path.join(current_dir, "data/masks")
 
-    # LakeFS에 모델과 데이터 업로드 (하나의 커밋으로)
+    # LakeFS에 파일 업로드
     uploaded_files = []
     changes_detected = False
-    commit_info = None
     
-    # 모델 파일 업로드 (변경된 경우에만)
-    if upload_to_lakefs(client, model_path, "models/model.pth"):
-        uploaded_files.append("models/model.pth")
-        changes_detected = True
+    # 파일 업로드 실행
+    upload_targets = [
+        (model_path, "models/model.pth"),
+        (images_path, "data/images"),
+        (masks_path, "data/masks")
+    ]
     
-    # 데이터 파일 업로드 (변경된 경우에만)
-    if upload_to_lakefs(client, images_path, "data/images"):
-        uploaded_files.append("data/images/*")
-        changes_detected = True
-    
-    if upload_to_lakefs(client, masks_path, "data/masks"):
-        uploaded_files.append("data/masks/*")
-        changes_detected = True
+    for local_path, lakefs_path in upload_targets:
+        if upload_file_to_lakefs(client, local_path, lakefs_path, uploaded_files):
+            changes_detected = True
     
     # 변경사항이 있는 경우 LakeFS에 커밋
+    commit_info = None
     if changes_detected:
         commit_info = commit_to_lakefs_with_git(
             client=client,

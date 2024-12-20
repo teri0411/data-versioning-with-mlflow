@@ -172,7 +172,7 @@ mkdir -p data/images data/masks models
 
 2. **Docker 컨테이너 실행**
 ```bash
-docker-compose up -d  # LakeFS, MinIO, MLflow 실행
+docker compose --profile local-lakefs up # LakeFS, MinIO, MLflow 실행
 ```
 
 3. **학습 데이터 준비**

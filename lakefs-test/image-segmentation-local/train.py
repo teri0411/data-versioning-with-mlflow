@@ -23,7 +23,7 @@ def main():
     
     # 모델 학습
     model_train = ModelTrain()
-    #model_train.train()  # 모델 반환
+    model_train.train()  # 모델 반환
     metrics = model_train.get_metrics()  # 메트릭 가져오기
     
     # 절대 경로 생성

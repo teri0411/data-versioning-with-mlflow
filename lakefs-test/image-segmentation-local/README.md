@@ -117,25 +117,17 @@ sequenceDiagram
 - 하이퍼파라미터 관리
 - 메트릭 시각화
 
-## 디렉토리 구조
-
+## 프로젝트 구조
 ```
-image-segmentation/
-├── data/
-│   ├── images/         # 입력 이미지
-│   └── masks/          # 세그멘테이션 마스크
-├── models/
-│   └── model.pth       # 학습된 모델
-├── train/
-│   ├── model_train.py  # 모델 학습 로직
-│   ├── mlflow_train.py # MLflow 통합
-│   └── base_train.py   # 기본 학습 클래스
-├── utils/
-│   ├── lakefs_utils.py # LakeFS 유틸리티
-│   └── minio_utils.py  # MinIO 유틸리티
-├── train.py            # 메인 학습 스크립트
-├── config.py           # 설정 파일
-└── docker-compose.yml  # 컨테이너 설정
+image-segmentation-local/
+├── train/              # 학습 관련 모듈
+├── inference/          # 추론 관련 모듈
+├── utils/             # 유틸리티 함수
+├── models/            # 학습된 모델 저장
+├── data/              # 데이터 디렉토리
+├── train.py           # 학습 스크립트
+├── register_model.py  # 모델 등록 스크립트 (선택사항)
+└── infer.py           # 추론 스크립트
 ```
 ## 설치 방법
 1. 필요한 패키지 설치:

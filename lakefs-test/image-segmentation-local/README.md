@@ -39,19 +39,102 @@ graph TD
     class B,E,H,L process
 ```
 
-## 프로젝트 구조
-```
-image-segmentation-local/
-├── train/              # 학습 관련 모듈
-├── inference/          # 추론 관련 모듈
-├── utils/             # 유틸리티 함수
-├── models/            # 학습된 모델 저장
-├── data/              # 데이터 디렉토리
-├── train.py           # 학습 스크립트
-├── register_model.py  # 모델 등록 스크립트 (선택사항)
-└── infer.py           # 추론 스크립트
+## 시스템 아키텍처
+
+```mermaid
+graph TB
+    subgraph "Version Control"
+        G[Git] --> |코드 버전 관리| GR[GitHub Repository]
+        L[LakeFS] --> |데이터/모델 버전 관리| M[MinIO Storage]
+    end
+    
+    subgraph "Training Pipeline"
+        T[train.py] --> |학습 실행| MT[ModelTrain]
+        MT --> |모델 저장| MP[models/model.pth]
+        MT --> |메트릭 기록| MLF[MLflow]
+    end
+    
+    subgraph "Integration"
+        T --> |파일 업로드| L
+        T --> |커밋 정보 전달| G
+        G --> |태그/커밋 정보| L
+    end
 ```
 
+## 작업 흐름 다이어그램
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant G as Git
+    participant T as train.py
+    participant L as LakeFS
+    participant M as MLflow
+
+    Note over U,M: 1. 초기 설정
+    U->>G: git init
+    U->>G: git add .
+    U->>G: git commit -m "Initial commit"
+    U->>G: git remote add origin
+    
+    Note over U,M: 2. 데이터 준비
+    U->>T: python train.py
+    T->>L: 데이터 업로드
+    T->>M: 초기 메트릭 기록
+    U->>G: git tag v0.1-initial
+    
+    Note over U,M: 3. 모델 학습
+    U->>T: python train.py
+    T->>L: 모델 파일 업로드
+    T->>M: 학습 메트릭 기록
+    U->>G: git commit
+    U->>G: git tag v1.0-acc85
+    
+    Note over U,M: 4. 모델 개선
+    U->>T: python train.py
+    T->>L: 개선된 모델 업로드
+    T->>M: 새로운 메트릭 기록
+    U->>G: git commit
+    U->>G: git tag v1.1-acc90
+```
+
+## 주요 컴포넌트
+
+### Git
+- 코드 버전 관리
+- 태그를 통한 중요 버전 표시
+- 커밋 메시지에 LakeFS 정보 포함
+
+### LakeFS
+- 데이터 및 모델 파일 버전 관리
+- Git 정보를 메타데이터로 저장
+- MinIO를 백엔드 스토리지로 사용
+
+### MLflow
+- 실험 추적
+- 하이퍼파라미터 관리
+- 메트릭 시각화
+
+## 디렉토리 구조
+
+```
+image-segmentation/
+├── data/
+│   ├── images/         # 입력 이미지
+│   └── masks/          # 세그멘테이션 마스크
+├── models/
+│   └── model.pth       # 학습된 모델
+├── train/
+│   ├── model_train.py  # 모델 학습 로직
+│   ├── mlflow_train.py # MLflow 통합
+│   └── base_train.py   # 기본 학습 클래스
+├── utils/
+│   ├── lakefs_utils.py # LakeFS 유틸리티
+│   └── minio_utils.py  # MinIO 유틸리티
+├── train.py            # 메인 학습 스크립트
+├── config.py           # 설정 파일
+└── docker-compose.yml  # 컨테이너 설정
+```
 ## 설치 방법
 1. 필요한 패키지 설치:
 ```bash
@@ -141,3 +224,4 @@ python infer.py
 - LakeFS와 MLflow 서버가 실행 중이어야 합니다.
 - 환경 변수가 올바르게 설정되어 있어야 합니다.
 - Git은 소스 코드 관리, LakeFS는 데이터/모델 관리, MLflow는 메타데이터 추적용으로 사용됩니다.
+

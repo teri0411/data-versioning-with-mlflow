@@ -1,27 +1,39 @@
-import mlflow
 from config import *
-from utils.git_utils import get_git_commit_hash
+import mlflow
 
 class MLflowTrain:
-    """MLflow 관련 기능을 처리하는 클래스"""
-    
     def __init__(self):
-        """MLflow 설정을 초기화합니다."""
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-    
-    def log_params(self, params=None):
-        """학습 파라미터와 Git 정보를 기록합니다."""
-        # Git commit hash 기록
-        git_commit_hash = get_git_commit_hash()
-        if git_commit_hash:
-            mlflow.set_tag("git_commit_hash", git_commit_hash)
-        
-        # 사용자 지정 파라미터가 있으면 기록
-        if params:
-            mlflow.log_params(params)
-    
+
     def log_metrics(self, metrics):
         """메트릭을 기록합니다."""
         for name, value in metrics.items():
             mlflow.log_metric(name, value)
+
+    def log_params(self, params):
+        """파라미터를 기록합니다."""
+        mlflow.log_params(params)
+
+    def log_tags(self, tags):
+        """태그를 기록합니다."""
+        for key, value in tags.items():
+            mlflow.set_tag(key, value)
+
+    def register_model(self, run_id, metrics):
+        """모델을 MLflow 모델 레지스트리에 등록합니다."""
+        model_name = "image_segmentation"
+        
+        # 모델 등록
+        try:
+            result = mlflow.register_model(
+                f"runs:/{run_id}/model",
+                model_name
+            )
+            print(f"\n=== 모델 등록 완료 ===")
+            print(f"모델 이름: {result.name}")
+            print(f"버전: {result.version}")
+            return result
+        except Exception as e:
+            print(f"모델 등록 중 오류 발생: {str(e)}")
+            return None

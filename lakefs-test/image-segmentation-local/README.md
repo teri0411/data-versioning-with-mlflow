@@ -41,75 +41,16 @@ graph TD
     class B,E,H,L process
 ```
 
-## 시스템 아키텍처
-
-```mermaid
-graph TB
-    subgraph "Version Control"
-        G[Git] --> |코드 버전 관리| GR[GitHub Repository]
-        L[LakeFS] --> |데이터/모델 버전 관리| M[MinIO Storage]
-    end
-    
-    subgraph "Training Pipeline"
-        T[train.py] --> |학습 실행| MT[ModelTrain]
-        MT --> |모델 저장| MP[models/model.pth]
-        MT --> |메트릭 기록| MLF[MLflow]
-    end
-    
-    subgraph "Integration"
-        T --> |파일 업로드| L
-        T --> |커밋 정보 전달| G
-        G --> |태그/커밋 정보| L
-    end
-```
-
-## 작업 흐름 다이어그램
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant G as Git
-    participant T as train.py
-    participant L as LakeFS
-    participant M as MLflow
-
-    Note over U,M: 1. 초기 설정
-    U->>G: git init
-    U->>G: git add .
-    U->>G: git commit -m "Initial commit"
-    U->>G: git remote add origin
-    
-    Note over U,M: 2. 데이터 준비
-    U->>T: python train.py
-    T->>L: 데이터 업로드
-    T->>M: 초기 메트릭 기록
-    U->>G: git tag v0.1-initial
-    
-    Note over U,M: 3. 모델 학습
-    U->>T: python train.py
-    T->>L: 모델 파일 업로드
-    T->>M: 학습 메트릭 기록
-    U->>G: git commit
-    U->>G: git tag v1.0-acc85
-    
-    Note over U,M: 4. 모델 개선
-    U->>T: python train.py
-    T->>L: 개선된 모델 업로드
-    T->>M: 새로운 메트릭 기록
-    U->>G: git commit
-    U->>G: git tag v1.1-acc90
-```
 
 ## 주요 컴포넌트
 
 ### Git
 - 코드 버전 관리
 - 태그를 통한 중요 버전 표시
-- 커밋 메시지에 LakeFS 정보 포함
 
 ### LakeFS
 - 데이터 및 모델 파일 버전 관리
-- Git 정보를 메타데이터로 저장
+- Git 정보 등을 메타데이터로 저장
 - MinIO를 백엔드 스토리지로 사용
 
 ### MLflow
@@ -117,18 +58,6 @@ sequenceDiagram
 - 하이퍼파라미터 관리
 - 메트릭 시각화
 
-## 프로젝트 구조
-```
-image-segmentation-local/
-├── train/              # 학습 관련 모듈
-├── inference/          # 추론 관련 모듈
-├── utils/             # 유틸리티 함수
-├── models/            # 학습된 모델 저장
-├── data/              # 데이터 디렉토리
-├── train.py           # 학습 스크립트
-├── register_model.py  # 모델 등록 스크립트 (선택사항)
-└── infer.py           # 추론 스크립트
-```
 ## 설치 방법
 1. 필요한 패키지 설치:
 ```bash
@@ -150,106 +79,6 @@ mlflow server --host localhost --port 5000
 ``` 
 
 
-
-## 상세 작업 단계
-
-### 1. 초기 데이터 설정
-
-초기 데이터 설정은 다음 단계로 진행됩니다:
-
-1. **데이터 디렉토리 생성**
-```bash
-mkdir -p data/images data/masks models
-```
-
-2. **Docker 컨테이너 실행**
-```bash
-docker compose --profile local-lakefs up # LakeFS, MinIO, MLflow 실행
-```
-
-3. **학습 데이터 준비**
-   - 데이터 다운로드 또는 복사
-   - 데이터 전처리 작업 수행
-
-4. **LakeFS에 데이터 업로드**
-```bash
-python train.py
-```
-
-5. **Git 커밋 및 태그 생성**
-```bash
-# 변경사항 커밋
-git add .
-git commit -m """학습 데이터 추가
-
-LakeFS 업로드 정보:
-- LakeFS 커밋: [출력된 커밋 ID]
-- 업로드된 파일: data/images/*, data/masks/*"""
-
-# 초기 태그 생성
-git tag -a "v0.1-initial" -m """
-초기 데이터셋 설정
-
-LakeFS 정보:
-- 커밋: [LakeFS 커밋 ID]
-- 데이터: data/images/*, data/masks/*"""
-
-# 변경사항 푸시
-git push origin main
-git push origin v0.1-initial
-```
-
-### 2. 모델 학습 및 버전 관리
-
-모델 학습과 버전 관리는 다음 단계로 진행됩니다:
-
-1. **모델 학습 실행**
-```bash
-python train.py
-
-# 예상 출력:
-=== LakeFS 커밋 완료 ===
-커밋 ID: abc123...
-=== Git 커밋 시 추가할 내용 ===
-LakeFS 업로드 정보:
-- LakeFS 커밋: abc123...
-- 업로드된 파일: models/model.pth
-- 모델 성능: accuracy 85%
-```
-
-2. **학습 결과 커밋**
-```bash
-git add .
-git commit -m """첫 번째 모델 학습 완료: accuracy 85%
-
-LakeFS 업로드 정보:
-- LakeFS 커밋: abc123...
-- 업로드된 파일: models/model.pth
-- 하이퍼파라미터:
-  - learning_rate: 0.001
-  - epochs: 10"""
-```
-
-3. **모델 버전 태그 생성**
-```bash
-git tag -a "v1.0-acc85" -m """
-첫 번째 학습 모델: Accuracy 85%
-
-LakeFS 정보:
-- 커밋: abc123...
-- 모델 파일: models/model.pth
-- 주요 개선사항:
-  - 기본 CNN 아키텍처 구현
-  - 데이터 증강 적용"""
-```
-
-4. **변경사항 푸시**
-```bash
-git push origin main
-git push origin v1.0-acc85
-```
-
-각 단계는 Git과 LakeFS를 통해 코드, 데이터, 모델의 버전을 추적하며, MLflow를 통해 실험 결과를 기록합니다. 이를 통해 모델의 전체 개발 과정을 추적하고 재현할 수 있습니다.
 
 ## 기능
 
@@ -273,6 +102,8 @@ git push origin v1.0-acc85
      - 하이퍼파라미터
      - 학습 메트릭
      - LakeFS 모델/데이터 경로
+     - LakeFS 커밋 해시
+     - Git 커밋 해시
    - 모델 파일을 LakeFS에 저장
 
 2. **모델 등록 (register_model.py) [선택사항]**
@@ -318,3 +149,4 @@ python infer.py
 - LakeFS와 MLflow 서버가 실행 중이어야 합니다.
 - 환경 변수가 올바르게 설정되어 있어야 합니다.
 - Git은 소스 코드 관리, LakeFS는 데이터/모델 관리, MLflow는 메타데이터 추적용으로 사용됩니다.
+

@@ -10,7 +10,7 @@ numpy>=1.20.0
 mlflow>=2.8.0
 
 # lakeFS
-lakefs-client>=0.91.0
+lakefs-client>=1.0.0 
 
 # 기타 유틸리티
 python-dotenv>=0.19.0

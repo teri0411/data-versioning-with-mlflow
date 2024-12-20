@@ -1,8 +1,70 @@
 import os
+import hashlib
+import subprocess
 import lakefs_client
 from lakefs_client import models
 from lakefs_client.client import LakeFSClient
 from config import *
+
+def get_git_hash():
+    """현재 Git 커밋 해시를 가져옵니다."""
+    try:
+        result = subprocess.run(['git', 'rev-parse', 'HEAD'], 
+                              capture_output=True, 
+                              text=True, 
+                              check=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+def get_git_branch():
+    """현재 Git 브랜치 이름을 가져옵니다."""
+    try:
+        result = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                              capture_output=True,
+                              text=True,
+                              check=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+def commit_to_lakefs_with_git(client, message, metadata=None):
+    """Git 정보를 포함하여 LakeFS에 커밋합니다."""
+    if metadata is None:
+        metadata = {}
+    
+    # Git 정보 가져오기
+    git_hash = get_git_hash()
+    git_branch = get_git_branch()
+    
+    # 메타데이터에 Git 정보 추가
+    if git_hash:
+        metadata['git_commit'] = git_hash
+    if git_branch:
+        metadata['git_branch'] = git_branch
+    
+    # LakeFS 커밋 생성
+    commit_creation = models.CommitCreation(
+        message=message,
+        metadata=metadata
+    )
+    
+    try:
+        response = client.commits.commit(
+            repository=LAKEFS_REPO_NAME,
+            branch=LAKEFS_BRANCH,
+            commit_creation=commit_creation
+        )
+        print(f"\n=== LakeFS 커밋 완료 ===")
+        print(f"커밋 ID: {response.id}")
+        if git_hash:
+            print(f"Git 커밋: {git_hash}")
+        if git_branch:
+            print(f"Git 브랜치: {git_branch}")
+        return response
+    except Exception as e:
+        print(f"Error creating commit: {str(e)}")
+        return None
 
 def setup_lakefs_client(create_if_not_exists=False):
     """LakeFS 클라이언트를 설정하고 반환합니다."""
@@ -30,32 +92,76 @@ def setup_lakefs_client(create_if_not_exists=False):
     
     return client
 
+def calculate_file_hash(file_path):
+    """파일의 MD5 해시를 계산합니다."""
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+def get_object_checksum(client, lakefs_path):
+    """LakeFS에서 파일의 체크섬을 가져옵니다."""
+    try:
+        stat = client.objects.stat_object(
+            repository=LAKEFS_REPO_NAME,
+            ref=LAKEFS_BRANCH,
+            path=lakefs_path
+        )
+        return stat.checksum
+    except lakefs_client.exceptions.NotFoundException:
+        return None
+
 def upload_to_lakefs(client, local_path, lakefs_path):
-    """파일이나 디렉토리를 LakeFS에 업로드합니다."""
+    """파일이나 디렉토리를 LakeFS에 업로드합니다.
+    LakeFS의 체크섬 기준으로 변경사항을 감지합니다.
+    """
     try:
         # 디렉토리인 경우
         if os.path.isdir(local_path):
-            success = True
+            any_uploaded = False
             for filename in os.listdir(local_path):
                 local_file = os.path.join(local_path, filename)
                 lakefs_file = os.path.join(lakefs_path, filename).replace('\\', '/')
-                if not upload_to_lakefs(client, local_file, lakefs_file):
-                    success = False
-            return success
+                if upload_to_lakefs(client, local_file, lakefs_file):
+                    any_uploaded = True
+            return any_uploaded
         
         # 파일인 경우
         else:
-            with open(local_path, 'rb') as f:
-                client.objects.upload_object(
-                    repository=LAKEFS_REPO_NAME,
-                    branch=LAKEFS_BRANCH,
-                    path=lakefs_path,
-                    content=f
-                )
-            print(f"파일 업로드 완료: {lakefs_path}")
-            return True
+            if not os.path.exists(local_path):
+                print(f"Error: File not found: {local_path}")
+                return False
+            
+            try:
+                # 현재 파일의 체크섬 계산
+                current_hash = calculate_file_hash(local_path)
+                
+                # LakeFS의 파일 체크섬 가져오기
+                lakefs_checksum = get_object_checksum(client, lakefs_path)
+                
+                # 체크섬 비교
+                if lakefs_checksum and lakefs_checksum == current_hash:
+                    print(f"파일 변경 없음, 스킵: {lakefs_path}")
+                    return False
+                
+                # 파일이 변경되었거나 새로운 파일인 경우 업로드
+                with open(local_path, 'rb') as f:
+                    client.objects.upload_object(
+                        repository=LAKEFS_REPO_NAME,
+                        branch=LAKEFS_BRANCH,
+                        path=lakefs_path,
+                        content=f
+                    )
+                print(f"파일 업로드 완료: {lakefs_path}")
+                return True
+                
+            except Exception as e:
+                print(f"Error uploading {local_path} to LakeFS: {str(e)}")
+                return False
+                
     except Exception as e:
-        print(f"Error uploading {local_path} to LakeFS: {str(e)}")
+        print(f"Error: {str(e)}")
         return False
 
 def download_from_lakefs(client, lakefs_path, local_path):

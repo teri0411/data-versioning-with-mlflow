@@ -40,3 +40,10 @@ class ModelTrain:
         self.save_model(self.base_train.model)
         
         return self.base_train.model
+        
+    def get_metrics(self):
+        """학습 메트릭을 반환합니다."""
+        return {
+            "loss": float(self.loss),
+            "accuracy": float(self.accuracy)
+        }

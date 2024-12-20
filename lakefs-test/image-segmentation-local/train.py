@@ -15,7 +15,8 @@ def main():
     
     # 모델 학습
     model_train = ModelTrain()
-    model_train.train()
+    model = model_train.train()  # 모델 반환
+    metrics = model_train.get_metrics()  # 메트릭 가져오기
     
     # 절대 경로 생성
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -45,10 +46,12 @@ def main():
         # Git 정보를 포함하여 LakeFS에 커밋
         commit_to_lakefs_with_git(
             client=client,
-            message="Upload model and training data - version1",
+            message=f"Upload model and training data (Accuracy: {metrics['accuracy']:.2f}%)",
             metadata={
                 "source": "train.py",
-                "uploaded_files": ", ".join(uploaded_files)
+                "uploaded_files": ", ".join(uploaded_files),
+                "model_accuracy": f"{metrics['accuracy']:.2f}",
+                "model_loss": f"{metrics['loss']:.2f}"
             }
         )
         print("\n=== 변경사항 업로드 완료 ===")
@@ -69,7 +72,6 @@ def main():
         lakefs_masks_path = f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/data/masks"
         
         # 메트릭과 파라미터 기록
-        metrics = model_train.get_metrics()
         parameters = {
             "model_path": lakefs_model_path,
             "images_path": lakefs_images_path,

@@ -28,6 +28,19 @@ def get_git_branch():
     except subprocess.CalledProcessError:
         return None
 
+def get_git_tag():
+    """현재 Git 태그를 가져옵니다."""
+    try:
+        result = subprocess.run(
+            ['git', 'describe', '--tags'], 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
 def commit_to_lakefs_with_git(client, message, metadata=None):
     """Git 정보를 포함하여 LakeFS에 커밋합니다."""
     if metadata is None:
@@ -36,12 +49,15 @@ def commit_to_lakefs_with_git(client, message, metadata=None):
     # Git 정보 가져오기
     git_hash = get_git_hash()
     git_branch = get_git_branch()
+    git_tag = get_git_tag()
     
     # 메타데이터에 Git 정보 추가
     if git_hash:
         metadata['git_commit'] = git_hash
     if git_branch:
         metadata['git_branch'] = git_branch
+    if git_tag:
+        metadata['git_tag'] = git_tag
     
     # LakeFS 커밋 생성
     commit_creation = models.CommitCreation(
@@ -50,21 +66,31 @@ def commit_to_lakefs_with_git(client, message, metadata=None):
     )
     
     try:
-        response = client.commits.commit(
+        response = client.commits_api.commit(
             repository=LAKEFS_REPO_NAME,
             branch=LAKEFS_BRANCH,
             commit_creation=commit_creation
         )
-        print(f"\n=== LakeFS 커밋 완료 ===")
+        
+        print("\n=== LakeFS 커밋 완료 ===")
         print(f"커밋 ID: {response.id}")
+        if git_tag:
+            print(f"Git 태그: {git_tag}")
         if git_hash:
             print(f"Git 커밋: {git_hash}")
-        if git_branch:
-            print(f"Git 브랜치: {git_branch}")
+            
+        # Git 커밋 메시지 생성 (참고용)
+        if 'uploaded_files' in metadata:
+            print("\n=== Git 커밋 시 추가할 내용 ===")
+            print(f"""LakeFS 업로드 정보:
+- LakeFS 커밋: {response.id}
+- 업로드된 파일: {metadata['uploaded_files']}
+- 모델 성능: accuracy {metadata.get('model_accuracy', 'N/A')}%""")
+            
         return response
     except Exception as e:
-        print(f"Error creating commit: {str(e)}")
-        return None
+        print(f"LakeFS 커밋 실패: {str(e)}")
+        raise
 
 def setup_lakefs_client(create_if_not_exists=False):
     """LakeFS 클라이언트를 설정하고 반환합니다."""

@@ -5,12 +5,12 @@ from inference.model_inference import ModelInference
 def main():
     """메인 함수"""
     parser = argparse.ArgumentParser(description='이미지 세그멘테이션 추론')
-    parser.add_argument('--interactive', action='store_true', help='실험을 수동으로 선택합니다.')
+    parser.add_argument('--manual', action='store_true', help='실험을 수동으로 선택합니다.')
     args = parser.parse_args()
     
     ensure_directories()
     inferencer = ModelInference()
-    inferencer.infer(auto_select=not args.interactive)
+    inferencer.infer(auto_select=not args.manual)
 
 if __name__ == "__main__":
     main()

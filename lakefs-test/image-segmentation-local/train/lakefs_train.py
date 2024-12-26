@@ -6,10 +6,10 @@ from lakefs_client.client import LakeFSClient
 from utils.lakefs_utils import upload_to_lakefs
 
 class LakeFSTrain:
-    """LakeFS 관련 기능을 처리하는 클래스"""
+    """Class for handling LakeFS-related functionality"""
     
     def __init__(self):
-        """초기화"""
+        """Initialize"""
         configuration = lakefs_client.Configuration()
         configuration.host = LAKEFS_ENDPOINT
         configuration.username = LAKEFS_ACCESS_KEY
@@ -17,9 +17,9 @@ class LakeFSTrain:
         self.client = LakeFSClient(configuration)
     
     def check_model_exists(self, model_path):
-        """LakeFS에 모델 파일이 존재하는지 확인합니다."""
+        """Check if model file exists in LakeFS."""
         try:
-            # lakectl fs stat 대신 SDK 사용
+            # Use SDK instead of lakectl fs stat
             stat = self.client.objects_api.stat_object(
                 repository=LAKEFS_REPO_NAME,
                 ref=LAKEFS_BRANCH,
@@ -32,24 +32,24 @@ class LakeFSTrain:
             raise e
     
     def save_model(self, model):
-        """모델을 저장하고 LakeFS에 업로드합니다."""
-        print("\nLakeFS에 모델 저장 중...")
+        """Save model and upload to LakeFS."""
+        print("\nSaving model to LakeFS...")
         torch.save(model.state_dict(), MODEL_PATH)
         
-        # LakeFS에 모델 업로드
+        # Upload model to LakeFS
         lakefs_model_path = os.path.join(LAKEFS_MODEL_PATH, os.path.basename(MODEL_PATH))
         if not self.check_model_exists(lakefs_model_path):
-            raise ValueError("모델이 LakeFS에 없습니다. 먼저 모델을 LakeFS에 업로드해주세요.")
+            raise ValueError("Model not found in LakeFS. Please upload the model to LakeFS first.")
         if upload_to_lakefs(self.client, MODEL_PATH, lakefs_model_path):
             return f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/{lakefs_model_path}"
         return MODEL_PATH
     
     def upload_data(self):
-        """데이터를 LakeFS에 업로드합니다."""
-        print("\nLakeFS에 데이터 업로드 중...")
+        """Upload data to LakeFS."""
+        print("\nUploading data to LakeFS...")
         
-        # 이미지 업로드
-        print("- 이미지 업로드 중...")
+        # Upload images
+        print("- Uploading images...")
         images_dir = os.path.join("data", "images")
         lakefs_images_dir = os.path.join(LAKEFS_DATA_PATH, "images")
         for image_file in os.listdir(images_dir):
@@ -60,8 +60,8 @@ class LakeFSTrain:
             lakefs_path = os.path.join(lakefs_images_dir, image_file)
             upload_to_lakefs(self.client, local_path, lakefs_path)
         
-        # 마스크 업로드
-        print("- 마스크 업로드 중...")
+        # Upload masks
+        print("- Uploading masks...")
         masks_dir = os.path.join("data", "masks")
         lakefs_masks_dir = os.path.join(LAKEFS_DATA_PATH, "masks")
         for mask_file in os.listdir(masks_dir):

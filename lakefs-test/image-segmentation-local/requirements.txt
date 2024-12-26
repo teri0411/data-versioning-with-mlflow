@@ -1,8 +1,8 @@
-# 기본 ML/DL 라이브러리
+# Basic ML/DL libraries
 torch>=1.9.0
 torchvision>=0.10.0
 
-# 이미지 처리
+# Image processing
 Pillow>=8.0.0
 numpy>=1.20.0
 
@@ -12,6 +12,6 @@ mlflow>=2.8.0
 # lakeFS
 lakefs-client>=1.0.0 
 
-# 기타 유틸리티
+# Other utilities
 python-dotenv>=0.19.0
 GitPython>=3.1.43

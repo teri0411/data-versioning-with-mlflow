@@ -2,25 +2,25 @@ import mlflow
 from config import *
 
 def setup_mlflow():
-    """MLflow 설정을 초기화합니다."""
+    """Initialize MLflow settings."""
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
 def get_experiment_runs():
-    """MLflow에서 실험 목록을 가져옵니다."""
+    """Get experiment list from MLflow."""
     experiment = mlflow.get_experiment_by_name(MLFLOW_EXPERIMENT_NAME)
     if experiment is None:
         return []
     return mlflow.search_runs(experiment_ids=[experiment.experiment_id])
 
 def format_run_info(run):
-    """실험 정보를 포맷팅합니다."""
-    # Git commit hash 가져오기
+    """Format experiment information."""
+    # Get Git commit hash
     git_commit = run.data.tags.get("mlflow.source.git.commit", "N/A")
     if git_commit != "N/A":
-        git_commit = git_commit[:8]  # 앞 8자리만 표시
+        git_commit = git_commit[:8]  # Display first 8 characters only
     
-    # 파라미터와 메트릭 가져오기
+    # Get parameters and metrics
     params = {k: v for k, v in run.data.params.items()}
     metrics = {k: round(float(v), 4) for k, v in run.data.metrics.items()}
     
@@ -32,14 +32,14 @@ def format_run_info(run):
     }
 
 def select_run():
-    """사용자가 실험을 선택할 수 있게 합니다."""
+    """Allow user to select an experiment."""
     runs = get_experiment_runs()
     
     if len(runs) == 0:
-        print("저장된 실험이 없습니다.")
+        print("No saved experiments.")
         return None
     
-    print("사용 가능한 실험 목록:\n")
+    print("Available experiments:\n")
     for idx, run_info in runs.iterrows():
         run = mlflow.get_run(run_info.run_id)
         info = format_run_info(run)
@@ -54,12 +54,12 @@ def select_run():
             print(f"   - {k}: {v}")
         print()
     
-    # 실험 선택
+    # Select experiment
     while True:
         try:
-            choice = input("사용할 실험 번호를 선택하세요: ")
-            if not choice.strip():  # 빈 입력 처리
-                print("실험 선택이 취소되었습니다.")
+            choice = input("Select experiment number to use: ")
+            if not choice.strip():  # Handle empty input
+                print("Experiment selection cancelled.")
                 return None
             
             choice = int(choice)
@@ -67,9 +67,9 @@ def select_run():
                 run_id = runs.iloc[choice - 1].run_id
                 return mlflow.get_run(run_id)
             else:
-                print(f"1부터 {len(runs)}까지의 숫자를 입력해주세요.")
+                print(f"Please enter a number between 1 and {len(runs)}.")
         except ValueError:
-            print("올바른 숫자를 입력해주세요.")
+            print("Please enter a valid number.")
         except EOFError:
-            print("실험 선택이 취소되었습니다.")
+            print("Experiment selection cancelled.")
             return None

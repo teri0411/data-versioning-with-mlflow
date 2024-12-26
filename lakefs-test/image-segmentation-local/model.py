@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class SimpleCNN(nn.Module):
-    """간단한 CNN 기반 세그멘테이션 모델"""
+    """Simple CNN-based segmentation model"""
     
     def __init__(self):
         super(SimpleCNN, self).__init__()
@@ -28,5 +28,5 @@ class SimpleCNN(nn.Module):
         return torch.sigmoid(x)
 
 def create_model():
-    """모델을 생성하고 반환합니다."""
+    """Create and return a model."""
     return SimpleCNN()

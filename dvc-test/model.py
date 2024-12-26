@@ -7,7 +7,7 @@ from typing import Dict, Any
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 class WineQualityModel(nn.Module):
-    """와인 품질 예측을 위한 PyTorch 모델"""
+    """PyTorch model for wine quality prediction"""
     def __init__(self, input_dim: int):
         super(WineQualityModel, self).__init__()
         self.linear = nn.Linear(input_dim, 1)
@@ -48,48 +48,48 @@ class WineQualityModel(nn.Module):
         return metrics
 
 class WineQualityPredictor:
-    """와인 품질 예측을 위한 클래스"""
+    """Class for wine quality prediction"""
     def __init__(self, checkpoint):
         self.checkpoint = checkpoint
         
     def predict(self, input_data):
         """
-        와인 품질 예측 함수
-        
+        Wine quality prediction function
+
         Args:
-            input_data: 예측할 데이터
-            
+            input_data: Data to predict
+
         Returns:
-            예측된 와인 품질 점수
+            Predicted wine quality score
         """
-        # 스케일러와 모델 가중치 가져오기
+        # Get scaler and model weights
         scaler = self.checkpoint['scaler_state']
         weights = self.checkpoint['model_state_dict']['linear.weight']
         bias = self.checkpoint['model_state_dict']['linear.bias']
         
-        # 데이터 스케일링
+        # Scale the data
         scaled_data = scaler.transform(input_data)
         
-        # PyTorch tensor로 변환 및 예측
+        # Convert to PyTorch tensor and predict
         input_tensor = torch.FloatTensor(scaled_data)
         predictions = torch.matmul(input_tensor, weights.t()) + bias
         
         return predictions.numpy()
 
 def train_elasticnet(train_x, train_y, alpha=0.5, l1_ratio=0.5):
-    """ElasticNet 모델 학습"""
-    # 데이터 스케일링
+    """Train ElasticNet model"""
+    # Scale the data
     scaler = StandardScaler()
     train_x_scaled = scaler.fit_transform(train_x)
     
-    # ElasticNet 모델 학습
+    # Train ElasticNet model
     lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
     lr.fit(train_x_scaled, train_y)
     
     return lr, scaler
 
 def convert_to_pytorch(lr_model, input_dim):
-    """ElasticNet 모델을 PyTorch 모델로 변환"""
+    """Convert ElasticNet model to PyTorch model"""
     model = WineQualityModel(input_dim=input_dim)
     with torch.no_grad():
         model.linear.weight.copy_(torch.FloatTensor(lr_model.coef_).reshape(1, -1))

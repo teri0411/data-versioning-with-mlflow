@@ -6,7 +6,7 @@ from model import create_model
 from dataset import get_data_loader
 
 class BaseTrain:
-    """기본 모델 학습 클래스"""
+    """Base model training class"""
     
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -16,7 +16,7 @@ class BaseTrain:
         self.dataloader = get_data_loader()
     
     def train_epoch(self, epoch):
-        """한 에폭 동안의 학습을 수행합니다."""
+        """Perform training for one epoch."""
         self.model.train()
         total_loss = 0
         batch_count = 0

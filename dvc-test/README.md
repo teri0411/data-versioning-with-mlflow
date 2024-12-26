@@ -22,7 +22,7 @@ graph TD
         C --> F[MLflow experiment 기록]
     end
 
-    subgraph Model Registration [선택사항]
+    subgraph Model Registration
         E --> G[DVC에 모델 존재 확인]
         F --> H[MLflow 실험 결과 확인]
         G --> I[모델 등록]
@@ -173,8 +173,12 @@ git push  # 메타데이터 공유
 
 ## 사용 방법
 
+### 1. MLflow 서버 실행:
+```bash
+mlflow server --host localhost --port 5000
+```
 
-### 1. 모델 학습
+### 2. 모델 학습
 ```bash
 python train.py
 ```
@@ -182,7 +186,7 @@ python train.py
 - 모델이 학습되고 DVC에 저장됩니다
 - MLflow에 실험 메타데이터가 기록됩니다
 
-### 2. 모델 등록 (선택사항)
+### 3. 모델 등록 (선택사항)
 ```bash
 python register_model.py
 ```
@@ -190,7 +194,7 @@ python register_model.py
 - `--manual` 옵션으로 수동 등록 가능
 - infer.py에서 MLflow의 메타데이터를 통해 DVC에서 직접 모델을 가져올 수 있으므로 이 단계는 선택사항입니다.
 
-### 3. 모델 추론
+### 4. 모델 추론
 ```bash
 python infer.py
 ```

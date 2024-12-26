@@ -9,8 +9,8 @@ MLFLOW_EXPERIMENT_NAME = "Image Segmentation"
 
 # LakeFS 설정
 LAKEFS_ENDPOINT = "http://localhost:8003"
-LAKEFS_ACCESS_KEY = "AKIAIOSFOLKFSSAMPLES"
-LAKEFS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+LAKEFS_ACCESS_KEY = "AKIAIOSFOLKFSSAMPLES" # this is a sample access key (https://github.com/treeverse/lakeFS-samples)
+LAKEFS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"  # this is a sample secret key (https://github.com/treeverse/lakeFS-samples)
 LAKEFS_REPO_NAME = "image-segmentation-local-repo"
 LAKEFS_BRANCH = "main"
 

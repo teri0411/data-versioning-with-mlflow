@@ -21,7 +21,7 @@ graph TD
         B --> E[MLflow experiment 기록]
     end
 
-    subgraph Model Registration [선택사항]
+    subgraph Model Registration
         D --> F[LakeFS 모델 확인]
         E --> G[MLflow 실험 결과 확인]
         F --> H[모델 등록]

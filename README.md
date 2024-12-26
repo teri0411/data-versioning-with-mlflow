@@ -50,5 +50,7 @@ Copyright (c) 2024 terry
 This project uses the following open-source libraries:
 - [DVC (Data Version Control)](https://dvc.org/) - Apache License 2.0
 - [LakeFS](https://lakefs.io/) - Apache License 2.0
+- [MLflow](https://mlflow.org/) - Apache License 2.0
+- [Git](https://git-scm.com/) - GNU General Public License v2.0
 
 Please see their respective websites for detailed license information.

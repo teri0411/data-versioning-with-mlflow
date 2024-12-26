@@ -39,3 +39,16 @@ Key Features:
 For detailed descriptions and usage instructions for each project, refer to their respective README.md files:
 - [DVC Project README](./dvc-test/README.md)
 - [LakeFS Project README](./lakefs-test/README.md)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2024 terry
+
+### Third-party Libraries
+This project uses the following open-source libraries:
+- [DVC (Data Version Control)](https://dvc.org/) - Apache License 2.0
+- [LakeFS](https://lakefs.io/) - Apache License 2.0
+
+Please see their respective websites for detailed license information.

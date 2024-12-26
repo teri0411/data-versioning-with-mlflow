@@ -111,9 +111,17 @@ def get_object_checksum(client, lakefs_path):
         return None
 
 def upload_to_lakefs(client, local_path, lakefs_path):
-    """Upload file to LakeFS."""
+    """Upload file or directory to LakeFS."""
     try:
         if os.path.isfile(local_path):
+            # Check if file has changed
+            local_hash = calculate_file_hash(local_path)
+            remote_hash = get_object_checksum(client, lakefs_path)
+            
+            if local_hash == remote_hash:
+                print(f"File unchanged, skipping upload: {local_path}")
+                return False
+            
             # Upload single file
             with open(local_path, 'rb') as f:
                 client.objects_api.upload_object(
@@ -123,8 +131,37 @@ def upload_to_lakefs(client, local_path, lakefs_path):
                     content=f
                 )
             return True
+        elif os.path.isdir(local_path):
+            # Upload directory recursively
+            success = False  # Only true if at least one file is uploaded
+            for root, _, files in os.walk(local_path):
+                for file in files:
+                    local_file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(local_file_path, local_path)
+                    lakefs_file_path = os.path.join(lakefs_path, rel_path)
+                    
+                    # Check if file has changed
+                    local_hash = calculate_file_hash(local_file_path)
+                    remote_hash = get_object_checksum(client, lakefs_file_path)
+                    
+                    if local_hash == remote_hash:
+                        print(f"File unchanged, skipping upload: {local_file_path}")
+                        continue
+                    
+                    with open(local_file_path, 'rb') as f:
+                        try:
+                            client.objects_api.upload_object(
+                                repository=LAKEFS_REPO_NAME,
+                                branch=LAKEFS_BRANCH,
+                                path=lakefs_file_path,
+                                content=f
+                            )
+                            success = True  # At least one file was uploaded
+                        except Exception as e:
+                            print(f"Error uploading {local_file_path}: {str(e)}")
+            return success
         else:
-            print(f"File not found: {local_path}")
+            print(f"Path not found: {local_path}")
             return False
     except Exception as e:
         print(f"Error during upload: {str(e)}")

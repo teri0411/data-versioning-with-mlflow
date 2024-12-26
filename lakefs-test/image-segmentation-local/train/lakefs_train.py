@@ -48,14 +48,18 @@ class LakeFSTrain:
         """Upload data to LakeFS."""
         print("\nUploading data to LakeFS...")
         
+        # Create directories in LakeFS if they don't exist
+        lakefs_data_dir = LAKEFS_DATA_PATH
+        lakefs_images_dir = LAKEFS_IMAGES_PATH
+        lakefs_masks_dir = LAKEFS_MASKS_PATH
+        
         # Upload images
         print("- Uploading images...")
         images_dir = os.path.join("data", "images")
-        lakefs_images_dir = os.path.join(LAKEFS_DATA_PATH, "images")
-        for image_file in os.listdir(images_dir):
-            if not image_file.endswith(".png"):
-                continue
+        if not os.path.exists(images_dir):
+            os.makedirs(images_dir)
             
+        for image_file in os.listdir(images_dir):
             local_path = os.path.join(images_dir, image_file)
             lakefs_path = os.path.join(lakefs_images_dir, image_file)
             upload_to_lakefs(self.client, local_path, lakefs_path)
@@ -63,13 +67,20 @@ class LakeFSTrain:
         # Upload masks
         print("- Uploading masks...")
         masks_dir = os.path.join("data", "masks")
-        lakefs_masks_dir = os.path.join(LAKEFS_DATA_PATH, "masks")
-        for mask_file in os.listdir(masks_dir):
-            if not mask_file.endswith(".png"):
-                continue
+        if not os.path.exists(masks_dir):
+            os.makedirs(masks_dir)
             
+        for mask_file in os.listdir(masks_dir):
             local_path = os.path.join(masks_dir, mask_file)
             lakefs_path = os.path.join(lakefs_masks_dir, mask_file)
             upload_to_lakefs(self.client, local_path, lakefs_path)
         
-        return f"lakefs://{LAKEFS_REPO_NAME}/{LAKEFS_BRANCH}/{LAKEFS_DATA_PATH}"
+        # Upload dataset
+        print("- Uploading dataset...")
+        dataset_files = ["train.py", "dataset.py", "config.py"]
+        for file in dataset_files:
+            if os.path.exists(file):
+                lakefs_path = os.path.join(lakefs_data_dir, file)
+                upload_to_lakefs(self.client, file, lakefs_path)
+        
+        print("Data upload complete!")

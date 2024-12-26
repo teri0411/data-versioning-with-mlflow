@@ -8,39 +8,39 @@ from .lakefs_inference import LakeFSInference
 from config import *
 
 class ModelInference:
-    """전체 추론 과정을 관리하는 클래스"""
+    """Class for managing the entire inference process"""
     
     def __init__(self):
-        """초기화"""
+        """Initialize"""
         self.base_inference = BaseInference()
         self.mlflow_inference = MLflowInference()
         self.lakefs_inference = LakeFSInference()
     
     def infer(self, auto_select=True):
-        """추론을 수행합니다."""
-        # MLflow에서 실험 선택 (메타데이터)
+        """Perform inference."""
+        # Select experiment from MLflow (metadata)
         run = self.mlflow_inference.select_experiment(auto_select)
         if run is None:
-            print("실험 선택이 취소되었습니다.")
+            print("Experiment selection cancelled.")
             return
         
-        # MLflow에서 LakeFS 모델 경로 가져오기
+        # Get LakeFS model path from MLflow
         model_path = run.data.params.get("model_path")
         if model_path is None:
             raise Exception("Model path not found in MLflow metadata")
         
-        # LakeFS에서 모델과 데이터 다운로드
+        # Download model and data from LakeFS
         local_model_path = self.lakefs_inference.download_model(model_path)
         self.lakefs_inference.download_data(run.info.run_id)
         
-        # 모델 로드 및 추론
+        # Load model and perform inference
         model = self.base_inference.load_model(local_model_path)
         results = self.base_inference.infer_images()
         
-        # 결과 저장
+        # Save results
         self.base_inference.save_results(results)
         
-        print(f"\n추론이 완료되었습니다.")
+        print(f"\nInference complete.")
         print(f"Run ID: {run.info.run_id}")
         print(f"Model: {model_path}")
         return results
